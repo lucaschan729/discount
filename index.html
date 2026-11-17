@@ -39,6 +39,7 @@
   td.pay{background:#fee2e2;font-weight:600}
   tr.tot td{background:#ede9fe;font-weight:700}
   .neg{color:#b91c1c}
+  .note{font-size:12px;color:#6b7280;margin-top:8px;line-height:1.7}
   .sumbox{margin-top:14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px}
   .sumbox .bar{margin-bottom:6px;justify-content:space-between}
   .sumtxt{white-space:pre-wrap;font-size:14px;line-height:1.9}
@@ -60,6 +61,7 @@
       <button class="btn" id="addPlan">＋ 新增方案</button>
       <button class="btn green" id="exp" style="margin-left:auto">⬇ 匯出 Excel</button>
     </div>
+    <div id="chk" style="font-size:13px;color:#4b5563;margin-top:10px"></div>
   </section>
 
   <div id="plans"></div>
@@ -71,7 +73,7 @@
 
   <section>
     <details>
-      <summary>⚙️ 優惠規則（每月更新）</summary>
+      <summary>⚙️ 優惠規則（每期更新）</summary>
       <p style="font-size:13px;color:#4b5563">修改或貼上新規則後按「套用」即時生效（只限本次開啟）。要永久更新，請把內容存成 <b>rules.json</b> 放到 GitHub 同一資料夾。</p>
       <textarea id="rulesTxt" spellcheck="false"></textarea>
       <div class="bar" style="margin:0">
@@ -94,6 +96,7 @@ const num = s => { const v = parseFloat(String(s == null ? '' : s).replace(/[,\s
 const f0 = v => Math.round(v).toLocaleString('en-US');
 const f2 = v => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const r2 = v => Math.round(v * 100) / 100;
+const fl = v => Math.floor(v + 1e-6);
 const CUR_NAME = { 'US$': '美元', 'HK$': '港元' };
 const NUMS = '一二三四五六七八九十';
 
@@ -112,9 +115,19 @@ const ciTerm = (term, years, a, b, xp) => {
 const lifeEx = [{ label: '已配搭指定危疾（投保額達5萬美元）', add: 5 }, { label: '已配搭環宇盈活／財富盈活（年保費達5萬美元）', add: 5 }];
 
 const DEFAULT_RULES = {
-  version: 'AIA 同心友您推廣活動（2026年第四季，20261101版）',
+  version: 'AIA 同心友您推廣活動（2026年第四季）＋預繳保費保證優惠息率（2026年11月）',
   fx: { 'US$': 1, 'HK$': 7.5 },
   levy: { rate: 0.001, cap: { 'US$': 12.84, 'HK$': 100 } },
+  // 預繳保費保證優惠息率：options 的 n = 預繳保費期；tiers = [最低年繳保費(美元), 保證年利率%]
+  // examples = 單張上的例子，用來自動核對算法
+  prepay: {
+    end: '2026-11-30',
+    products: ['yingyu', 'huanyu', 'caifu'],
+    termYears: 5,
+    currencies: ['US$'],
+    options: [ { n: 1, tiers: [[0, 4.8]] }, { n: 4, tiers: [[0, 4.3], [200000, 4.5]] } ],
+    examples: [ { prem: 30000, n: 1, total: 1440 }, { prem: 30000, n: 4, total: 14045 }, { prem: 200000, n: 4, total: 98376 } ]
+  },
   products: [
     { id: 'yingyu', name: '儲蓄 - 盈御多元貨幣儲蓄保險計劃3', terms: [
       { term: '5年', years: 5, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
@@ -150,15 +163,45 @@ let plans = [];
 
 function newPlan(o) {
   return Object.assign({ name: '方案' + (plans.length + 1), pid: R.products[0].id, ti: 0, prem: '', levy: '', coupon: '',
-    oName: '其他優惠', oPct: '', ex: [], xp: false, prepay: false, preN: '', preR: '4.3' }, o || {});
+    oName: '其他優惠', oPct: '', ex: [], xp: false, prepay: false, preN: 4, preR: '' }, o || {});
 }
 const getProd = p => R.products.find(x => x.id === p.pid) || R.products[0];
 const getTerm = p => { const pr = getProd(p); return pr.terms[p.ti] || pr.terms[0]; };
+const isPast = d => new Date() > new Date(d + 'T23:59:59');
 
 function yrTxt(ys) {
   const a = Math.min.apply(null, ys), b = Math.max.apply(null, ys);
   if (a === b) return a === 1 ? '投保時扣減' : '第' + a + '年繳費時扣減';
   return '第' + a + '至' + b + '年繳費時分期扣減';
+}
+
+// ---------- 預繳保費 ----------
+function prepayOK(p) {
+  const pp = R.prepay;
+  if (!pp || !Array.isArray(pp.options) || !pp.options.length) return false;
+  if (pp.products && !pp.products.includes(getProd(p).id)) return false;
+  if (getTerm(p).years !== (pp.termYears || 5)) return false;
+  if (pp.currencies && !pp.currencies.includes(cur)) return false;
+  return true;
+}
+function prepayOpt(p) { const o = R.prepay.options; return o.find(x => x.n === +p.preN) || o[o.length - 1]; }
+function tierRate(tiers, usd) { let r = 0; tiers.forEach(x => { if (usd >= x[0]) r = x[1]; }); return r; }
+// 單張算法：每年利息 = 戶口內預繳結餘 × 年利率；結餘 = 上年結餘 + 利息 − 已到期保費（不取整）
+function prepayInterest(P, n, rate) {
+  const a = []; let B = P * n;
+  for (let k = 0; k < n; k++) { const I = B * rate / 100; a.push(I); B = B + I - P; }
+  return a;
+}
+function checkPrepay() {
+  const pp = R.prepay;
+  if (!pp || !Array.isArray(pp.examples) || !pp.examples.length) return '';
+  let ok = 0;
+  pp.examples.forEach(e => {
+    const o = pp.options.find(x => x.n === e.n); if (!o) return;
+    const tot = fl(prepayInterest(e.prem, e.n, tierRate(o.tiers, e.prem)).reduce((a, b) => a + b, 0));
+    if (tot === e.total) ok++;
+  });
+  return '預繳算法核對：單張 ' + pp.examples.length + ' 個例子中 ' + ok + ' 個相符 ' + (ok === pp.examples.length ? '✅' : '⚠️ 請檢查規則');
 }
 
 // ---------- 計算 ----------
@@ -214,14 +257,18 @@ function calc(p) {
   const oP = num(p.oPct);
   add(s.mode === 'upfront' ? 1 : 2, (p.oName || '其他優惠') + '（' + oP + '%）', P * oP / 100);
 
-  let upfront = 0;
-  if (p.prepay && t.years > 1) {
-    const n = Math.min(years - 1, Math.max(1, Math.round(num(p.preN)) || years - 1));
-    const rate = num(p.preR);
-    let B = P * n;
-    upfront = P * (n + 1);
-    const g = '預繳保費優惠（一次繳付' + (n + 1) + '年保費）';
-    for (let k = 1; k <= n; k++) { const I = B * rate / 100; add(k + 1, '預繳優惠利息', I, g, true); B = B + I - P; }
+  // 預繳保費優惠利息（各年向下取整；總額按未取整利息相加後向下取整，與單張例子一致）
+  let pre = null;
+  if (p.prepay && prepayOK(p) && P > 0) {
+    const o = prepayOpt(p), manual = String(p.preR).trim() !== '';
+    const rate = manual ? num(p.preR) : tierRate(o.tiers, usd);
+    const arr = prepayInterest(P, o.n, rate);
+    const exact = arr.reduce((a, b) => a + b, 0), tot = fl(exact);
+    const g = '預繳保費優惠（一次繳付' + (o.n + 1) + '年保費，保證年利率' + rate + '%）';
+    let dsum = 0;
+    arr.forEach((I, k) => { const d = fl(I); dsum += d; add(k + 2, '預繳優惠利息（' + rate + '%）', d, g, true); });
+    pre = { n: o.n, rate, tot, adj: tot - dsum, pct: Math.floor(exact / P * 1000 + 1e-9) / 10, upfront: P * (o.n + 1), manual, opt: o };
+    const sg = sum.find(x => x.pre); if (sg) sg.amt += pre.adj;
   }
 
   let totOrig = 0, totDed = 0, last = 0;
@@ -231,6 +278,7 @@ function calc(p) {
     totOrig += r.orig; totDed += r.ded;
     if (r.items.length) last = r.y;
   });
+  if (pre) totDed += pre.adj;
   // 年期較長時，把沒有優惠的尾段年份合併顯示
   let disp = rows;
   const keep = Math.max(5, last);
@@ -247,30 +295,38 @@ function calc(p) {
     if (t.end) { const d = t.end.split('-'); lines.push('【限時優惠｜' + (+d[0]) + '年' + (+d[1]) + '月' + (+d[2]) + '日前投保】'); }
     sum.forEach((x, k) => {
       let ln = (NUMS[k] || (k + 1)) + '、' + x.g + ' ';
-      if (x.pre) ln += '折算優惠約 ' + (x.amt / P * 100).toFixed(1) + '%，即 ' + f0(x.amt) + ' ' + cn;
+      if (x.pre) ln += '折算優惠約 ' + pre.pct.toFixed(1) + '%，即 ' + f0(x.amt) + ' ' + cn;
       else ln += f0(x.amt) + ' ' + cn + '（' + yrTxt(x.ys) + '）';
       lines.push(ln);
     });
     lines.push('✅ 優惠合計：' + f0(totDed) + ' ' + cn);
   }
 
-  let hint = '';
+  const hints = [], warns = [];
   if (P > 0) {
-    if (ti < 0) hint = '未達最低保費要求（' + cur + f0(t.tiers[0][0] * fx) + '），沒有基本優惠。';
+    if (ti < 0) hints.push('未達最低保費要求（' + cur + f0(t.tiers[0][0] * fx) + '），沒有基本回贈優惠。');
     else if (ti < t.tiers.length - 1) {
       const nx = t.tiers[ti + 1];
-      hint = '💡 再多 ' + cur + f0(nx[0] * fx - P) + ' 保費，基本優惠可升至 ' + (nx[1] + (useX ? t.xp.baseAdd : 0)) + unit + '。';
+      hints.push('💡 再多 ' + cur + f0(nx[0] * fx - P) + ' 保費，基本回贈可升至 ' + (nx[1] + (useX ? t.xp.baseAdd : 0)) + unit + '。');
     }
   }
-  let expired = '';
-  if (t.end) expired = new Date() > new Date(t.end + 'T23:59:59') ? '此優惠的推廣期已於 ' + t.end + ' 結束，請更新優惠規則。' : '';
+  if (pre && !pre.manual) {
+    const nx = pre.opt.tiers.find(x => x[0] > usd);
+    if (nx) hints.push('💡 年繳保費再多 ' + cur + f0(nx[0] * fx - P) + '，預繳保證年利率可升至 ' + nx[1] + '%。');
+  }
+  let period = '';
+  if (t.end) { if (isPast(t.end)) warns.push('保費回贈的推廣期已於 ' + t.end + ' 結束，請更新優惠規則。'); else period = '保費回贈推廣期至 ' + t.end; }
+  if (pre && R.prepay.end) {
+    if (isPast(R.prepay.end)) warns.push('預繳優惠的推廣期已於 ' + R.prepay.end + ' 結束，請更新優惠規則。');
+    else period += (period ? '；' : '') + '預繳優惠推廣期至 ' + R.prepay.end + '（名額有限）';
+  }
 
-  return { prod, t, P, levy, unit, base, ext, total, years, lifelong, rows, disp, totOrig, totDed, totNet: totOrig - totDed, hint, expired, upfront, summary: lines.join('\n') };
+  return { prod, t, P, levy, unit, base, ext, total, years, lifelong, rows, disp, totOrig, totDed, totNet: totOrig - totDed, hints, warns, period, pre, summary: lines.join('\n') };
 }
 
 // ---------- 畫面 ----------
 function planHtml(p, i) {
-  const prod = getProd(p), t = getTerm(p), yrs = t.years || 5;
+  const prod = getProd(p), t = getTerm(p), canPre = prepayOK(p);
   const f = (label, k, ph) => '<div><label>' + label + '</label><input type="text" inputmode="decimal" data-i="' + i + '" data-k="' + k + '" value="' + esc(p[k]) + '" placeholder="' + (ph || '') + '"></div>';
   let h = '<section><div class="bar"><input type="text" class="pname" data-i="' + i + '" data-k="name" value="' + esc(p.name) + '">' +
     '<button class="btn alt" data-act="copy" data-i="' + i + '">複製方案</button><button class="btn alt" data-act="del" data-i="' + i + '">刪除</button></div><div class="grid">';
@@ -278,13 +334,17 @@ function planHtml(p, i) {
   h += '<div><label>保費繳付期</label><select data-i="' + i + '" data-k="ti">' + prod.terms.map((x, j) => '<option value="' + j + '"' + (x === t ? ' selected' : '') + '>' + esc(x.term) + '</option>').join('') + '</select></div>';
   h += f('保費金額（年繳／一次性）', 'prem') + f('每年保費徵費', 'levy', '自動計算') + f('電子保費現金券金額', 'coupon', '0');
   h += '<div><label>其他優惠名稱</label><input type="text" data-i="' + i + '" data-k="oName" value="' + esc(p.oName) + '"></div>' + f('其他優惠（佔保費 %）', 'oPct', '0');
-  if (p.prepay && t.years > 1) h += f('預繳優惠年利率（%）', 'preR') + f('預繳年數', 'preN', String(yrs - 1));
+  if (p.prepay && canPre) {
+    const sel = prepayOpt(p);
+    h += '<div><label>預繳保費期</label><select data-i="' + i + '" data-k="preN">' + R.prepay.options.map(o => '<option value="' + o.n + '"' + (o === sel ? ' selected' : '') + '>' + o.n + '年（投保時繳付' + (o.n + 1) + '年保費）</option>').join('') + '</select></div>';
+    h += f('預繳保證年利率（%）', 'preR', '按單張自動套用');
+  }
   h += '</div><div class="checks">';
   (t.extras || []).forEach((e, j) => {
     h += '<label><input type="checkbox" data-i="' + i + '" data-k="ex" data-j="' + j + '"' + (p.ex[j] ? ' checked' : '') + '> ' + esc(e.label) + '（+' + e.add + (t.unit === 'm' ? '個月' : '%') + '）</label>';
   });
   if (t.xp) h += '<label><input type="checkbox" data-i="' + i + '" data-k="xp"' + (p.xp ? ' checked' : '') + '> 同時繳付定期保費及額外保費</label>';
-  if (t.years > 1) h += '<label><input type="checkbox" data-i="' + i + '" data-k="prepay"' + (p.prepay ? ' checked' : '') + '> 預繳保費</label>';
+  if (canPre) h += '<label><input type="checkbox" data-i="' + i + '" data-k="prepay"' + (p.prepay ? ' checked' : '') + '> 預繳保費</label>';
   h += '</div><div id="res' + i + '"></div></section>';
   return h;
 }
@@ -292,16 +352,18 @@ function planHtml(p, i) {
 function renderRes(i) {
   const c = calc(plans[i]);
   let h = '';
-  if (c.expired) h += '<div class="warn">' + c.expired + '</div>';
-  else if (c.t.end) h += '<div class="tip">推廣期至 ' + c.t.end + '</div>';
-  if (c.hint) h += '<div class="tip">' + c.hint + '</div>';
+  c.warns.forEach(w => { h += '<div class="warn">' + w + '</div>'; });
+  if (c.period) h += '<div class="tip">' + c.period + '</div>';
+  c.hints.forEach(x => { h += '<div class="tip">' + x + '</div>'; });
   h += '<div class="cards">' +
-    '<div class="card"><small>基本優惠＋額外優惠</small><b>' + c.base + c.unit + ' + ' + c.ext + c.unit + '</b></div>' +
+    '<div class="card"><small>基本回贈＋額外回贈</small><b>' + c.base + c.unit + ' + ' + c.ext + c.unit + '</b></div>' +
+    (c.pre ? '<div class="card"><small>預繳保證年利率（預繳' + c.pre.n + '年）</small><b>' + c.pre.rate + '%</b></div>' +
+      '<div class="card"><small>預繳優惠利息合共（約' + c.pre.pct.toFixed(1) + '%首年年繳保費）</small><b>' + cur + f0(c.pre.tot) + '</b></div>' +
+      '<div class="card"><small>投保時一次性支付（保費，未計徵費及優惠）</small><b>' + cur + f0(c.pre.upfront) + '</b></div>' : '') +
     '<div class="card"><small>總優惠金額</small><b>' + cur + f0(c.totDed) + '</b></div>' +
     '<div class="card"><small>' + (c.lifelong ? '首5年實繳總額' : '實繳總額') + '</small><b>' + cur + f2(c.totNet) + '</b></div>' +
-    '<div class="card"><small>總優惠 ÷ 年繳保費</small><b>' + (c.P ? (c.totDed / c.P * 100).toFixed(2) + '%' : '—') + '</b></div>' +
-    (c.upfront ? '<div class="card"><small>投保時一次性支付（未扣優惠）</small><b>' + cur + f0(c.upfront) + '</b></div>' : '') + '</div>';
-  h += '<div class="scroll"><table><thead><tr><th>保單年度</th><th class="n">原保費<br>（包括保費徵費）</th><th>優惠／回贈詳情</th><th class="n">扣減金額<br>（四捨五入整數）</th><th class="n">實繳保費</th></tr></thead><tbody>';
+    '<div class="card"><small>總優惠 ÷ 年繳保費</small><b>' + (c.P ? (c.totDed / c.P * 100).toFixed(2) + '%' : '—') + '</b></div></div>';
+  h += '<div class="scroll"><table><thead><tr><th>保單年度</th><th class="n">原保費<br>（包括保費徵費）</th><th>優惠／回贈詳情</th><th class="n">扣減金額<br>（整數）</th><th class="n">實繳保費</th></tr></thead><tbody>';
   c.disp.forEach(r => {
     const multi = r.items.length > 1;
     h += '<tr><td>' + r.label + '</td><td class="n">' + f2(r.orig) + '</td><td>' +
@@ -309,6 +371,7 @@ function renderRes(i) {
       (r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + '-' + f0(x.amt)).join('<br>') : '/') + '</td><td class="n pay">' + f2(r.net) + '</td></tr>';
   });
   h += '<tr class="tot"><td>' + (c.lifelong ? '首5年合計' : '總計') + '</td><td class="n">' + f2(c.totOrig) + '</td><td></td><td class="n neg">-' + f0(c.totDed) + '</td><td class="n">' + f2(c.totNet) + '</td></tr></tbody></table></div>';
+  if (c.pre) h += '<div class="note">註：預繳優惠利息實際是存入保單的現金儲備金戶口，上表為方便比較，按年列作扣減。各年利息按單張例子向下取整顯示，總計按未取整利息計算，故與各年相加可能相差 1 至 2 元。</div>';
   if (c.summary) h += '<div class="sumbox"><div class="bar"><b>優惠摘要（客戶版）</b><button class="btn alt" data-act="cp" data-i="' + i + '">複製文字</button></div><div class="sumtxt">' + esc(c.summary) + '</div></div>';
   $('res' + i).innerHTML = h;
 }
@@ -317,7 +380,7 @@ function renderCmp() {
   let h = '<thead><tr><th>方案</th><th>產品</th><th class="n">保費金額</th><th class="n">總原保費</th><th class="n">總優惠</th><th class="n">實繳總額</th><th class="n">總優惠 ÷ 年繳保費</th></tr></thead><tbody>';
   plans.forEach(p => {
     const c = calc(p);
-    h += '<tr><td>' + esc(p.name) + '</td><td>' + esc(c.prod.name) + '（' + esc(c.t.term) + '）</td><td class="n">' + f0(c.P) + '</td><td class="n">' + f2(c.totOrig) +
+    h += '<tr><td>' + esc(p.name) + '</td><td>' + esc(c.prod.name) + '（' + esc(c.t.term) + (c.pre ? '，預繳' + c.pre.n + '年' : '') + '）</td><td class="n">' + f0(c.P) + '</td><td class="n">' + f2(c.totOrig) +
       '</td><td class="n neg">-' + f0(c.totDed) + '</td><td class="n">' + f2(c.totNet) + '</td><td class="n">' + (c.P ? (c.totDed / c.P * 100).toFixed(2) + '%' : '—') + '</td></tr>';
   });
   $('cmp').innerHTML = h + '</tbody>';
@@ -331,6 +394,7 @@ function renderPlans() {
 
 function renderHead() {
   $('ver').textContent = '目前規則：' + (R.version || '未命名');
+  $('chk').textContent = checkPrepay();
   const keys = Object.keys(R.fx || { 'US$': 1 });
   if (!keys.includes(cur)) cur = keys[0];
   $('cur').innerHTML = keys.map(k => '<option' + (k === cur ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
@@ -349,6 +413,7 @@ $('plans').addEventListener('change', ev => {
   if (!k) return;
   const p = plans[+t.dataset.i];
   if (t.tagName === 'SELECT') {
+    if (k === 'preN') { p.preN = +t.value; renderPlans(); return; }
     if (k === 'pid') { p.pid = t.value; p.ti = 0; p.xp = false; } else p.ti = +t.value;
     p.ex = []; renderPlans();
   } else if (t.type === 'checkbox') {
@@ -376,6 +441,8 @@ $('cur').addEventListener('change', () => { cur = $('cur').value; renderPlans();
 function setRules(obj, msg) {
   if (!obj || !Array.isArray(obj.products) || !obj.products.length || obj.products.some(x => !x.id || !Array.isArray(x.terms) || !x.terms.length || x.terms.some(t => !Array.isArray(t.tiers) || !t.tiers.length)))
     throw new Error('規則格式不正確');
+  if (obj.prepay && (!Array.isArray(obj.prepay.options) || obj.prepay.options.some(o => !o.n || !Array.isArray(o.tiers) || !o.tiers.length)))
+    throw new Error('預繳規則格式不正確');
   if (!obj.fx) obj.fx = { 'US$': 1 };
   if (!obj.levy) obj.levy = { rate: 0, cap: {} };
   if (!obj.levy.cap) obj.levy.cap = {};
@@ -407,9 +474,11 @@ $('exp').addEventListener('click', () => {
   const sheets = [];
   plans.forEach((p, i) => {
     const c = calc(p);
-    cmp.push([p.name, c.prod.name, c.t.term, c.P, r2(c.totOrig), -c.totDed, r2(c.totNet), cur]);
-    const aoa = [[p.name], ['產品', c.prod.name + '（' + c.t.term + '）'], ['保費金額', c.P], ['貨幣', cur], ['優惠規則', R.version || ''], [],
-      ['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額', '實繳保費']];
+    cmp.push([p.name, c.prod.name, c.t.term + (c.pre ? '（預繳' + c.pre.n + '年）' : ''), c.P, r2(c.totOrig), -c.totDed, r2(c.totNet), cur]);
+    const aoa = [[p.name], ['產品', c.prod.name + '（' + c.t.term + '）'], ['保費金額', c.P], ['貨幣', cur], ['優惠規則', R.version || '']];
+    if (c.pre) aoa.push(['預繳', '預繳' + c.pre.n + '年，保證年利率 ' + c.pre.rate + '%，投保時繳付保費 ' + f0(c.pre.upfront)]);
+    aoa.push([]);
+    aoa.push(['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額', '實繳保費']);
     c.disp.forEach(r => aoa.push([r.label, r2(r.orig), r.items.map(x => x.label + ' -' + f0(x.amt)).join('；') || '/', -r.ded, r2(r.net)]));
     aoa.push([c.lifelong ? '首5年合計' : '總計', r2(c.totOrig), '', -c.totDed, r2(c.totNet)]);
     if (c.summary) { aoa.push([]); aoa.push(['優惠摘要']); c.summary.split('\n').forEach(l => aoa.push([l])); }
@@ -418,7 +487,7 @@ $('exp').addEventListener('click', () => {
     sheets.push([ws, '方案' + (i + 1)]);
   });
   const ws0 = XLSX.utils.aoa_to_sheet(cmp);
-  ws0['!cols'] = [{ wch: 18 }, { wch: 40 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 6 }];
+  ws0['!cols'] = [{ wch: 18 }, { wch: 40 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 6 }];
   XLSX.utils.book_append_sheet(wb, ws0, '方案比較');
   sheets.forEach(s => XLSX.utils.book_append_sheet(wb, s[0], s[1]));
   XLSX.writeFile(wb, '保費優惠計算.xlsx');
@@ -428,7 +497,7 @@ $('exp').addEventListener('click', () => {
 plans.push(newPlan({ name: '方案1：預繳', prem: '100,000', prepay: true }));
 plans.push(newPlan({ name: '方案2：不預繳', prem: '100,000' }));
 renderHead(); renderPlans();
-// 如同一資料夾有 rules.json，自動採用（每月只需更換該檔案）
+// 如同一資料夾有 rules.json，自動採用（每期只需更換該檔案）
 fetch('rules.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j) setRules(j, '已載入 rules.json。'); }).catch(() => {});
 </script>
 </body>
