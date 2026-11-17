@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>保費優惠計算器</title>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
   :root{--navy:#0f172a;--navy2:#1e293b;--gold:#d97706;--gold2:#f59e0b;--soft:#fffbeb;--line:#e2e8f0;--mut:#64748b;--bg:#f1f5f9;--red:#dc2626}
   *{box-sizing:border-box}
@@ -124,6 +124,7 @@ const fl = v => Math.floor(v + 1e-6);
 const CUR_NAME = { 'US$': '美元', 'HK$': '港元' };
 const NUMS = '一二三四五六七八九十';
 const TH = ['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額（整數）', '實繳保費'];
+const DISCLAIMER = '本文件只供參考，優惠以保險公司最新公佈的條款及細則和最終批核為準。';
 
 // ---------- 內置優惠規則（AIA 2026年第四季單張）----------
 // tiers: [最低年度化保費(美元), 基本優惠]；unit: "%" 或 "m"(個月)
@@ -527,32 +528,199 @@ $('rulesFile').addEventListener('change', async ev => {
   ev.target.value = '';
 });
 
-// ---------- 匯出 Excel ----------
-$('exp').addEventListener('click', () => {
-  const wb = XLSX.utils.book_new();
-  const cmp = [['方案', '產品', '繳付期', '保費金額', '總原保費', '總優惠', '實繳總額', '總優惠百分比', '貨幣']];
-  const sheets = [];
-  plans.forEach((p, i) => {
-    const c = calc(p);
-    cmp.push([p.name, c.prod.name, c.t.term + (c.pre ? '（預繳' + c.pre.n + '年）' : ''), c.P, r2(c.totOrig), -c.totDed, r2(c.totNet), c.pctTxt, cur]);
-    const aoa = [[p.name], ['產品', c.prod.name + '（' + c.t.term + '）'], ['保費金額', c.P], ['貨幣', cur], ['優惠規則', R.version || ''],
-      [c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt], ['配搭指定產品額外優惠', c.ext + c.unit, c.extAmt], ['其他優惠', c.oP + '%', c.otherAmt]];
-    if (c.pre) aoa.push(['預繳優惠利息', '預繳' + c.pre.n + '年，保證年利率 ' + c.pre.rate + '%，投保時繳付保費 ' + f0(c.pre.upfront), c.pre.tot]);
-    aoa.push(['總優惠金額', c.pctTxt, c.totDed]);
-    aoa.push([]);
-    aoa.push(['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額', '實繳保費']);
-    c.disp.forEach(r => aoa.push([r.label, r2(r.orig), r.items.map(x => x.label + ' -' + f0(x.amt)).join('；') || '/', -r.ded, r2(r.net)]));
-    aoa.push([c.lifelong ? '首5年合計' : '總計', r2(c.totOrig), '', -c.totDed, r2(c.totNet)]);
-    if (c.summary) { aoa.push([]); aoa.push(['優惠摘要']); c.summary.split('\n').forEach(l => aoa.push([l])); }
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{ wch: 26 }, { wch: 22 }, { wch: 60 }, { wch: 12 }, { wch: 14 }];
-    sheets.push([ws, '方案' + (i + 1)]);
+// ---------- 匯出 Excel（ExcelJS，含格式）----------
+const XC = { navy: 'FF0F172A', navy2: 'FF1E293B', soft: 'FFFEF3C7', light: 'FFF8FAFC', line: 'FFCBD5E1', pay: 'FFFFF7ED', payTxt: 'FF9A3412', red: 'FFDC2626', mut: 'FF64748B', white: 'FFFFFFFF' };
+function xBorder() { const s = { style: 'thin', color: { argb: XC.line } }; return { top: s, left: s, bottom: s, right: s }; }
+// 寫入一格（c1 至 c2 橫向合併）；o: bold, italic, size, color, fill, align, fmt, noBorder
+function xCell(ws, r, c1, c2, v, o) {
+  o = o || {};
+  for (let c = c1; c <= c2; c++) {
+    const cell = ws.getCell(r, c);
+    if (c === c1) cell.value = v;
+    cell.font = { name: 'Microsoft JhengHei', size: o.size || 11, bold: !!o.bold, italic: !!o.italic, color: { argb: o.color || XC.navy } };
+    cell.alignment = { horizontal: o.align || 'center', vertical: 'middle', wrapText: true };
+    if (o.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: o.fill } };
+    if (!o.noBorder) cell.border = xBorder();
+    if (o.fmt) cell.numFmt = o.fmt;
+  }
+  if (c2 > c1) ws.mergeCells(r, c1, r, c2);
+}
+// 按文字長度估算列高（w = 欄寬）
+function xH(s, w) {
+  let n = 0;
+  String(s == null ? '' : s).split('\n').forEach(l => {
+    let u = 0;
+    for (const ch of l) u += ch.charCodeAt(0) > 255 ? 2 : 1;
+    n += Math.max(1, Math.ceil(u / (w * 0.85)));
   });
-  const ws0 = XLSX.utils.aoa_to_sheet(cmp);
-  ws0['!cols'] = [{ wch: 18 }, { wch: 40 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 6 }];
-  XLSX.utils.book_append_sheet(wb, ws0, '方案比較');
-  sheets.forEach(s => XLSX.utils.book_append_sheet(wb, s[0], s[1]));
-  XLSX.writeFile(wb, '保費優惠計算.xlsx');
+  return Math.max(22, n * 17 + 5);
+}
+function xFmt() {
+  const q = '"' + String(cur).replace(/"/g, '') + '"';
+  return { f2: q + '#,##0.00', f0: q + '#,##0', neg: q + '#,##0;-' + q + '#,##0' };
+}
+function xPay(c) {
+  if (c.pre) return '預繳' + c.pre.n + '年（投保時一次繳付' + (c.pre.n + 1) + '年保費）';
+  return c.upfrontMode ? '一次性繳付' : '每年繳付';
+}
+function xToday() { const d = new Date(); return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
+const XHEAD = { bold: true, color: XC.white, fill: XC.navy2 };
+
+// 分頁一：優惠對比（項目為列，方案為欄）
+function xCompare(wb, F, sub) {
+  const cs = plans.map(calc), last = plans.length + 1;
+  const ws = wb.addWorksheet('優惠對比', { views: [{ showGridLines: false }] });
+  ws.columns = [{ width: 34 }].concat(plans.map(() => ({ width: 28 })));
+  ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+  const W = 34 + 28 * plans.length;
+  xCell(ws, 1, 1, last, '保費優惠方案對比', { bold: true, size: 16, color: XC.white, fill: XC.navy, noBorder: true });
+  ws.getRow(1).height = 36;
+  xCell(ws, 2, 1, last, sub, { size: 9, color: XC.mut, fill: XC.light, noBorder: true });
+  ws.getRow(2).height = xH(sub, W);
+  let r = 4;
+  xCell(ws, r, 1, 1, '項目', XHEAD);
+  let hh = 26;
+  plans.forEach((p, k) => { xCell(ws, r, k + 2, k + 2, p.name, XHEAD); hh = Math.max(hh, xH(p.name, 28)); });
+  ws.getRow(r).height = hh; r++;
+  const line = (label, fn, o) => {
+    o = o || {};
+    xCell(ws, r, 1, 1, label, { bold: true, align: 'left', fill: o.fill || XC.light, color: o.color });
+    let h = xH(label, 34);
+    cs.forEach((c, k) => { const v = fn(c); xCell(ws, r, k + 2, k + 2, v, o); if (typeof v === 'string') h = Math.max(h, xH(v, 28)); });
+    ws.getRow(r).height = h; r++;
+  };
+  const hi = { fmt: F.f0, bold: true, fill: XC.soft };
+  line('產品', c => c.prod.name);
+  line('保費繳付期', c => c.t.term);
+  line('繳費安排', c => xPay(c));
+  line('保費金額（年繳／一次性）', c => c.P, { fmt: F.f0 });
+  line('基本回贈／保費折扣（幅度）', c => c.base + c.unit);
+  line('基本回贈／保費折扣（金額）', c => c.baseAmt, { fmt: F.f0 });
+  line('配搭指定產品額外優惠（幅度）', c => c.ext + c.unit);
+  line('配搭指定產品額外優惠（金額）', c => c.extAmt, { fmt: F.f0 });
+  line('其他優惠', c => c.otherAmt, { fmt: F.f0 });
+  line('電子保費現金券', c => c.couponAmt, { fmt: F.f0 });
+  line('預繳優惠利息', c => c.pre ? c.pre.tot : 0, { fmt: F.f0 });
+  line('總優惠金額', c => c.totDed, hi);
+  line('總優惠百分比', c => c.pctTxt, { bold: true, fill: XC.soft });
+  line('總原保費（包括保費徵費）', c => r2(c.totOrig), { fmt: F.f2 });
+  line('實繳總額', c => r2(c.totNet), { fmt: F.f2, bold: true, fill: XC.pay, color: XC.payTxt });
+  line('投保時一次性支付（保費，未計徵費及優惠）', c => c.pre ? c.pre.upfront : '—', { fmt: F.f0 });
+  r++;
+  const notes = [];
+  if (cs.some(c => c.lifelong)) notes.push('＊ 終身或每年續保的計劃，總原保費及實繳總額按首5年計算。');
+  notes.push(DISCLAIMER);
+  notes.forEach(t => { xCell(ws, r, 1, last, t, { size: 9, italic: true, color: XC.mut, align: 'left', noBorder: true }); ws.getRow(r).height = xH(t, W); r++; });
+}
+
+// 每個方案一個分頁：保單資料、優惠明細、每年實繳保費、優惠摘要
+function xPlan(wb, p, i, F, sub) {
+  const c = calc(p), W = 132;
+  const nm = ((i + 1) + '.' + (p.name || '')).replace(/[\\\/\?\*\[\]:']/g, ' ').slice(0, 28);
+  const ws = wb.addWorksheet(nm, { views: [{ showGridLines: false }] });
+  ws.columns = [{ width: 26 }, { width: 22 }, { width: 46 }, { width: 18 }, { width: 20 }];
+  ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+  const title = '保費優惠方案｜' + (p.name || '');
+  xCell(ws, 1, 1, 5, title, { bold: true, size: 16, color: XC.white, fill: XC.navy, noBorder: true });
+  ws.getRow(1).height = Math.max(36, xH(title, 90));
+  xCell(ws, 2, 1, 5, sub, { size: 9, color: XC.mut, fill: XC.light, noBorder: true });
+  ws.getRow(2).height = xH(sub, W);
+  let r = 3;
+  const sec = t => { r++; xCell(ws, r, 1, 5, t, { bold: true, size: 12, fill: XC.soft, align: 'left' }); ws.getRow(r).height = 26; r++; };
+  const info = (label, v, fmt) => {
+    xCell(ws, r, 1, 1, label, { bold: true, fill: XC.light, align: 'left' });
+    xCell(ws, r, 2, 5, v, { align: 'left', fmt });
+    ws.getRow(r).height = Math.max(xH(label, 26), typeof v === 'string' ? xH(v, 106) : 22); r++;
+  };
+
+  sec('一、保單資料');
+  info('產品', c.prod.name);
+  info('保費繳付期', c.t.term);
+  info('保單貨幣', (CUR_NAME[cur] || cur) + '（' + cur + '）');
+  info('保費金額（年繳／一次性）', c.P, F.f2);
+  info('每年保費徵費', r2(c.levy), F.f2);
+  info('繳費安排', xPay(c));
+  if (c.pre) {
+    info('預繳保證年利率', c.pre.rate + '%');
+    info('投保時一次性支付（保費，未計徵費及優惠）', c.pre.upfront, F.f0);
+  }
+  const per = c.warns.concat(c.period ? [c.period] : []).join('；');
+  if (per) info('推廣期', per);
+
+  sec('二、優惠明細');
+  xCell(ws, r, 1, 2, '優惠項目', XHEAD); xCell(ws, r, 3, 3, '優惠幅度', XHEAD); xCell(ws, r, 4, 5, '優惠金額', XHEAD);
+  ws.getRow(r).height = 26; r++;
+  const item = (name, tag, amt, tot) => {
+    const o = tot ? { bold: true, fill: XC.soft } : {};
+    xCell(ws, r, 1, 2, name, Object.assign({ align: 'left' }, o, { bold: true }));
+    xCell(ws, r, 3, 3, tag, o);
+    xCell(ws, r, 4, 5, amt, Object.assign({ fmt: F.f0 }, o, { bold: true }));
+    ws.getRow(r).height = Math.max(tot ? 26 : 22, xH(name, 48), xH(tag, 46)); r++;
+  };
+  item(c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt);
+  item('配搭指定產品額外優惠', c.ext + c.unit, c.extAmt);
+  item((p.oName && p.oName !== '其他優惠') ? '其他優惠｜' + p.oName : '其他優惠', c.oP + '%', c.otherAmt);
+  if (c.couponAmt) item('電子保費現金券', '現金券', c.couponAmt);
+  if (c.pre) item('預繳優惠利息', '預繳' + c.pre.n + '年・保證年利率 ' + c.pre.rate + '%', c.pre.tot);
+  item('總優惠金額', '總優惠百分比 ' + c.pctTxt, c.totDed, true);
+
+  sec('三、每年實繳保費');
+  TH.forEach((t, k) => xCell(ws, r, k + 1, k + 1, t, XHEAD));
+  ws.getRow(r).height = 34; r++;
+  c.disp.forEach((row, k) => {
+    const multi = row.items.length > 1, z = k % 2 ? XC.light : undefined;
+    const det = row.items.length ? row.items.map((x, j) => (multi ? (j + 1) + '. ' : '') + x.label + '：-' + f0(x.amt)).join('\n') : '/';
+    xCell(ws, r, 1, 1, row.label, { bold: true, fill: z });
+    xCell(ws, r, 2, 2, r2(row.orig), { fmt: F.f2, fill: z });
+    xCell(ws, r, 3, 3, det, { fill: z });
+    xCell(ws, r, 4, 4, row.ded ? -row.ded : '/', { fmt: F.neg, bold: true, color: row.ded ? XC.red : XC.navy, fill: z });
+    xCell(ws, r, 5, 5, r2(row.net), { fmt: F.f2, bold: true, fill: XC.pay, color: XC.payTxt });
+    ws.getRow(r).height = Math.max(24, xH(row.label, 26), xH(det, 46)); r++;
+  });
+  const T = { bold: true, fill: XC.soft };
+  xCell(ws, r, 1, 1, c.lifelong ? '首5年合計' : '總計', T);
+  xCell(ws, r, 2, 2, r2(c.totOrig), Object.assign({ fmt: F.f2 }, T));
+  xCell(ws, r, 3, 3, '', T);
+  xCell(ws, r, 4, 4, -c.totDed, Object.assign({ fmt: F.neg }, T, { color: XC.red }));
+  xCell(ws, r, 5, 5, r2(c.totNet), Object.assign({ fmt: F.f2 }, T, { color: XC.payTxt }));
+  ws.getRow(r).height = 28; r++;
+  if (c.pre) {
+    const nt = '註：預繳優惠利息實際是存入保單的現金儲備金戶口，上表為方便比較，按年列作扣減。各年利息向下取整，總計按未取整利息計算，故與各年相加可能相差 1 至 2 元。';
+    xCell(ws, r, 1, 5, nt, { size: 9, italic: true, color: XC.mut, align: 'left', noBorder: true });
+    ws.getRow(r).height = xH(nt, W); r++;
+  }
+
+  if (c.summary) {
+    sec('四、優惠摘要');
+    c.summary.split('\n').forEach(l => {
+      const b = l.indexOf('✅') === 0 || l.indexOf('【') === 0;
+      xCell(ws, r, 1, 5, l, { align: 'left', bold: b });
+      ws.getRow(r).height = xH(l, W); r++;
+    });
+  }
+  r++;
+  xCell(ws, r, 1, 5, DISCLAIMER, { size: 9, italic: true, color: XC.mut, align: 'left', noBorder: true });
+  ws.getRow(r).height = 22;
+}
+
+$('exp').addEventListener('click', async () => {
+  if (!window.ExcelJS) { alert('Excel 元件未能載入，請檢查網絡後重新整理頁面再試。'); return; }
+  if (!plans.length) { alert('請先新增方案。'); return; }
+  const b = $('exp'), old = b.textContent;
+  b.textContent = '匯出中…';
+  try {
+    const wb = new ExcelJS.Workbook();
+    const F = xFmt(), sub = '製表日期：' + xToday() + '　｜　優惠規則：' + (R.version || '');
+    xCompare(wb, F, sub);
+    plans.forEach((p, i) => xPlan(wb, p, i, F, sub));
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = '保費優惠計算.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  } catch (e) { alert('匯出失敗：' + e.message); }
+  b.textContent = old;
 });
 
 // ---------- 啟動 ----------
