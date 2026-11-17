@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>保費優惠計算器</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;background:#f4f6fa;color:#1f2937}
+  header{background:linear-gradient(135deg,#7c2d12,#c2410c);color:#fff;padding:26px 20px}
+  header h1{margin:0 0 6px;font-size:24px}
+  header p{margin:0;opacity:.9;font-size:14px}
+  main{max-width:1100px;margin:0 auto;padding:20px}
+  section{background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  h2{margin:0 0 14px;font-size:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+  label{font-size:13px;color:#4b5563}
+  .grid label{display:block;margin-bottom:4px}
+  input[type=text],select,textarea{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;font-family:inherit}
+  .pname{font-size:18px;font-weight:700;color:#c2410c;flex:1;min-width:160px}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .btn{background:#c2410c;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-size:14px;cursor:pointer}
+  .btn.alt{background:#fff;color:#c2410c;border:1px solid #c2410c}
+  .btn.green{background:#15803d}
+  .checks{display:flex;flex-wrap:wrap;gap:8px 18px;margin:14px 0}
+  .checks label{font-size:14px;color:#1f2937}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:14px 0}
+  .card{background:#fff7ed;border-radius:10px;padding:12px 14px}
+  .card small{color:#4b5563;font-size:12px}
+  .card b{display:block;font-size:18px;color:#7c2d12;margin-top:4px}
+  .tip{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:10px}
+  .warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:10px}
+  .scroll{overflow:auto;border:1px solid #e5e7eb;border-radius:8px}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  th,td{border-bottom:1px solid #e5e7eb;padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#fef3c7;white-space:nowrap}
+  td.n,th.n{text-align:right;white-space:nowrap}
+  td.pay{background:#fee2e2;font-weight:600}
+  tr.tot td{background:#ede9fe;font-weight:700}
+  .neg{color:#b91c1c}
+  .sumbox{margin-top:14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px}
+  .sumbox .bar{margin-bottom:6px;justify-content:space-between}
+  .sumtxt{white-space:pre-wrap;font-size:14px;line-height:1.9}
+  summary{cursor:pointer;font-weight:700;font-size:16px}
+  textarea{height:260px;font-family:Menlo,Consolas,monospace;font-size:12px;margin:12px 0}
+  footer{font-size:12px;color:#6b7280;text-align:center;padding:10px 20px 30px}
+</style>
+</head>
+<body>
+<header>
+  <h1>保費優惠計算器</h1>
+  <p id="ver"></p>
+</header>
+<main>
+  <section>
+    <div class="bar" style="margin:0">
+      <label>貨幣</label>
+      <select id="cur" style="width:110px"></select>
+      <button class="btn" id="addPlan">＋ 新增方案</button>
+      <button class="btn green" id="exp" style="margin-left:auto">⬇ 匯出 Excel</button>
+    </div>
+  </section>
+
+  <div id="plans"></div>
+
+  <section>
+    <h2>方案比較</h2>
+    <div class="scroll"><table id="cmp"></table></div>
+  </section>
+
+  <section>
+    <details>
+      <summary>⚙️ 優惠規則（每月更新）</summary>
+      <p style="font-size:13px;color:#4b5563">修改或貼上新規則後按「套用」即時生效（只限本次開啟）。要永久更新，請把內容存成 <b>rules.json</b> 放到 GitHub 同一資料夾。</p>
+      <textarea id="rulesTxt" spellcheck="false"></textarea>
+      <div class="bar" style="margin:0">
+        <button class="btn" id="applyRules">套用</button>
+        <button class="btn alt" id="resetRules">還原內置規則</button>
+        <button class="btn alt" id="dlRules">下載 rules.json</button>
+        <input type="file" id="rulesFile" accept=".json" style="display:none">
+        <button class="btn alt" id="upRules">匯入規則檔</button>
+        <span id="rulesMsg" style="font-size:13px;color:#b45309"></span>
+      </div>
+    </details>
+  </section>
+</main>
+<footer>本工具只供參考，優惠以保險公司最新公佈的條款及細則和最終批核為準。</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const num = s => { const v = parseFloat(String(s == null ? '' : s).replace(/[,\s$]/g, '')); return isNaN(v) ? 0 : v; };
+const f0 = v => Math.round(v).toLocaleString('en-US');
+const f2 = v => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const r2 = v => Math.round(v * 100) / 100;
+const CUR_NAME = { 'US$': '美元', 'HK$': '港元' };
+const NUMS = '一二三四五六七八九十';
+
+// ---------- 內置優惠規則（AIA 2026年第四季單張）----------
+// tiers: [最低年度化保費(美元), 基本優惠]；unit: "%" 或 "m"(個月)
+// sched.mode: once=首個保單週年後一次過；equal=分 n 年平均；steps=按月數分年；upfront=投保時折扣
+const SAV = [[0,5],[10000,15],[30000,20],[50000,23],[100000,26],[200000,28],[1000000,30]];
+const SP = [[100000,2],[300000,3],[600000,4],[1000000,5],[2000000,6],[3500000,7]];
+const CI_EX = [{ label: '已配搭指定儲蓄保險計劃', add: 3 }, { label: '已配搭指定醫療保險計劃', add: 2 }];
+const CI_XP = { baseAdd: 5, extras: [7, 5], cap: 22, steps: [6, 7] };
+const ciTerm = (term, years, a, b, xp) => {
+  const t = { term, years, unit: 'm', tiers: [[0,4],[a,4.5],[b,5]], extras: CI_EX, cap: 10, sched: { mode: 'steps', steps: [2, 3] }, end: '2026-12-31' };
+  if (xp) t.xp = CI_XP;
+  return t;
+};
+const lifeEx = [{ label: '已配搭指定危疾（投保額達5萬美元）', add: 5 }, { label: '已配搭環宇盈活／財富盈活（年保費達5萬美元）', add: 5 }];
+
+const DEFAULT_RULES = {
+  version: 'AIA 同心友您推廣活動（2026年第四季，20261101版）',
+  fx: { 'US$': 1, 'HK$': 7.5 },
+  levy: { rate: 0.001, cap: { 'US$': 12.84, 'HK$': 100 } },
+  products: [
+    { id: 'yingyu', name: '儲蓄 - 盈御多元貨幣儲蓄保險計劃3', terms: [
+      { term: '5年', years: 5, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
+      { term: '10年', years: 10, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
+      { term: '一次性繳付', years: 1, unit: '%', tiers: SP, sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
+    { id: 'huanyu', name: '儲蓄 - 環宇盈活儲蓄保險計劃', terms: [
+      { term: '5年', years: 5, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／活然人生／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
+      { term: '一次性繳付', years: 1, unit: '%', tiers: SP, sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
+    { id: 'caifu', name: '儲蓄 - 財富盈活儲蓄保險計劃', terms: [
+      { term: '5年', years: 5, unit: '%', tiers: [[50000,21],[100000,24],[200000,26],[1000000,28]], extras: [{ label: '已配搭指定危疾／活然人生／優悅年金', add: 3 }], cap: 31, sched: { mode: 'once' }, end: '2026-11-30' },
+      { term: '一次性繳付', years: 1, unit: '%', tiers: [[500000,3],[600000,4],[1000000,5],[2000000,6],[3500000,7]], sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
+    { id: 'jianai', name: '儲蓄 - 「簡愛‧延續」儲蓄保險計劃5', terms: [
+      { term: '5年', years: 5, unit: '%', tiers: [[0,5],[10000,6],[30000,7],[50000,8],[100000,10]], sched: { mode: 'once' }, end: '2026-11-30' },
+      { term: '10年', years: 10, unit: '%', tiers: [[0,5],[10000,6],[30000,7],[50000,8],[100000,10]], sched: { mode: 'once' }, end: '2026-11-30' },
+      { term: '一次性繳付', years: 1, unit: '%', tiers: [[100000,1],[300000,2],[600000,3],[1000000,4]], sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
+    { id: 'huoran', name: '人壽 - 「活然人生」保險計劃', terms: [
+      { term: '5年', years: 5, unit: '%', tiers: [[0,20],[25000,25],[45000,30]], extras: lifeEx, cap: 40, sched: { mode: 'equal', n: 4 }, end: '2026-12-31' },
+      { term: '30年', years: 30, unit: '%', tiers: [[0,20],[6000,25],[10000,30]], extras: lifeEx, cap: 40, sched: { mode: 'equal', n: 4 }, end: '2026-12-31' } ] },
+    { id: 'aibanhang', name: '危疾 - 「愛伴航」保險計劃2系列', terms: [
+      ciTerm('10年', 10, 8000, 16000, true), ciTerm('18年', 18, 5000, 10000, true), ciTerm('25年', 25, 4000, 8000, true) ] },
+    { id: 'jianzhi', name: '危疾 - 「簡緻‧愛伴航」保險計劃', terms: [
+      ciTerm('10年', 10, 8000, 16000, false), ciTerm('18年', 18, 5000, 10000, false), ciTerm('25年', 25, 4000, 8000, false) ] },
+    { id: 'medical', name: '醫療 - 指定醫療保障（自願醫保／尊耀／睿選）', terms: [
+      { term: '每年續保', years: 0, unit: 'm', tiers: [[0,7]], extras: [{ label: '已配搭指定保險計劃', add: 2 }], cap: 9, sched: { mode: 'steps', steps: [3, 3] }, end: '2026-12-31' } ] },
+    { id: 'protect', name: '保障 - 指定危疾／意外／定期壽險（3個月回贈）', terms: [
+      { term: '按計劃', years: 0, unit: 'm', tiers: [[0,3]], sched: { mode: 'steps', steps: [2, 1] }, end: '2026-12-31' } ] }
+  ]
+};
+
+let R = JSON.parse(JSON.stringify(DEFAULT_RULES));
+let cur = 'US$';
+let plans = [];
+
+function newPlan(o) {
+  return Object.assign({ name: '方案' + (plans.length + 1), pid: R.products[0].id, ti: 0, prem: '', levy: '', coupon: '',
+    oName: '其他優惠', oPct: '', ex: [], xp: false, prepay: false, preN: '', preR: '4.3' }, o || {});
+}
+const getProd = p => R.products.find(x => x.id === p.pid) || R.products[0];
+const getTerm = p => { const pr = getProd(p); return pr.terms[p.ti] || pr.terms[0]; };
+
+function yrTxt(ys) {
+  const a = Math.min.apply(null, ys), b = Math.max.apply(null, ys);
+  if (a === b) return a === 1 ? '投保時扣減' : '第' + a + '年繳費時扣減';
+  return '第' + a + '至' + b + '年繳費時分期扣減';
+}
+
+// ---------- 計算 ----------
+function calc(p) {
+  const prod = getProd(p), t = getTerm(p);
+  const P = num(p.prem), fx = R.fx[cur] || 1, usd = P / fx;
+  const unit = t.unit === 'm' ? '個月' : '%';
+  const useX = !!(t.xp && p.xp);
+  let ti = -1;
+  if (P > 0) t.tiers.forEach((x, i) => { if (usd >= x[0]) ti = i; });
+  let base = 0, ext = 0;
+  if (ti >= 0) {
+    base = t.tiers[ti][1] + (useX ? t.xp.baseAdd : 0);
+    (t.extras || []).forEach((e, j) => { if (p.ex[j]) ext += useX ? t.xp.extras[j] : e.add; });
+  }
+  const cap = useX ? t.xp.cap : t.cap;
+  let total = base + ext;
+  if (cap && total > cap) total = cap;
+  ext = total - base;
+
+  const lifelong = !t.years, years = t.years || 5;
+  const levy = String(p.levy).trim() !== '' ? num(p.levy) : Math.min(P * R.levy.rate, (R.levy.cap[cur] || 0));
+  const rows = [], sum = [];
+  for (let y = 1; y <= years; y++) rows.push({ y, orig: P + levy, items: [] });
+  // g = 摘要內的分組名稱；pre = 預繳優惠
+  const add = (y, label, amt, g, pre) => {
+    amt = Math.round(amt);
+    if (y > years || amt <= 0) return;
+    rows[y - 1].items.push({ label, amt });
+    g = g || label;
+    let s0 = sum.find(x => x.g === g);
+    if (!s0) { s0 = { g, amt: 0, ys: [], pre: !!pre }; sum.push(s0); }
+    s0.amt += amt;
+    if (!s0.ys.includes(y)) s0.ys.push(y);
+  };
+  const val = x => t.unit === 'm' ? P / 12 * x : P * x / 100;
+  const s = t.sched || { mode: 'once' };
+
+  add(1, '電子保費現金券', num(p.coupon));
+  if (s.mode === 'upfront') add(1, '保費折扣（' + total + '%）', val(total));
+  else if (s.mode === 'once') {
+    add(2, '保費回贈優惠（' + base + unit + '）', val(base));
+    add(2, '額外保費回贈優惠（' + ext + unit + '）', val(ext));
+  } else if (s.mode === 'equal') {
+    for (let k = 0; k < s.n; k++) add(k + 2, '保費回贈優惠（共' + total + unit + '，分' + s.n + '年）', val(total) / s.n);
+  } else if (s.mode === 'steps') {
+    const st = useX ? t.xp.steps : s.steps;
+    const g = '保費回贈優惠（共' + total + unit + '）';
+    let rem = total;
+    st.forEach((m, k) => { const q = Math.min(m, rem); add(k + 2, '保費回贈（' + q + unit + '）', val(q), g); rem -= q; });
+    add(st.length + 2, '保費回贈（' + rem + unit + '）', val(rem), g);
+  }
+  const oP = num(p.oPct);
+  add(s.mode === 'upfront' ? 1 : 2, (p.oName || '其他優惠') + '（' + oP + '%）', P * oP / 100);
+
+  let upfront = 0;
+  if (p.prepay && t.years > 1) {
+    const n = Math.min(years - 1, Math.max(1, Math.round(num(p.preN)) || years - 1));
+    const rate = num(p.preR);
+    let B = P * n;
+    upfront = P * (n + 1);
+    const g = '預繳保費優惠（一次繳付' + (n + 1) + '年保費）';
+    for (let k = 1; k <= n; k++) { const I = B * rate / 100; add(k + 1, '預繳優惠利息', I, g, true); B = B + I - P; }
+  }
+
+  let totOrig = 0, totDed = 0, last = 0;
+  rows.forEach(r => {
+    r.ded = r.items.reduce((a, b) => a + b.amt, 0);
+    r.net = r.orig - r.ded; r.label = '第 ' + r.y + ' 年';
+    totOrig += r.orig; totDed += r.ded;
+    if (r.items.length) last = r.y;
+  });
+  // 年期較長時，把沒有優惠的尾段年份合併顯示
+  let disp = rows;
+  const keep = Math.max(5, last);
+  if (years - keep >= 2) {
+    const tail = rows.slice(keep);
+    disp = rows.slice(0, keep);
+    disp.push({ label: '第 ' + (keep + 1) + '–' + years + ' 年（每年 ' + f2(P + levy) + '）', orig: tail.reduce((a, b) => a + b.orig, 0), items: [], ded: 0, net: tail.reduce((a, b) => a + b.net, 0) });
+  }
+
+  // 優惠摘要（客戶版格式）
+  const cn = CUR_NAME[cur] || cur;
+  const lines = [];
+  if (sum.length) {
+    if (t.end) { const d = t.end.split('-'); lines.push('【限時優惠｜' + (+d[0]) + '年' + (+d[1]) + '月' + (+d[2]) + '日前投保】'); }
+    sum.forEach((x, k) => {
+      let ln = (NUMS[k] || (k + 1)) + '、' + x.g + ' ';
+      if (x.pre) ln += '折算優惠約 ' + (x.amt / P * 100).toFixed(1) + '%，即 ' + f0(x.amt) + ' ' + cn;
+      else ln += f0(x.amt) + ' ' + cn + '（' + yrTxt(x.ys) + '）';
+      lines.push(ln);
+    });
+    lines.push('✅ 優惠合計：' + f0(totDed) + ' ' + cn);
+  }
+
+  let hint = '';
+  if (P > 0) {
+    if (ti < 0) hint = '未達最低保費要求（' + cur + f0(t.tiers[0][0] * fx) + '），沒有基本優惠。';
+    else if (ti < t.tiers.length - 1) {
+      const nx = t.tiers[ti + 1];
+      hint = '💡 再多 ' + cur + f0(nx[0] * fx - P) + ' 保費，基本優惠可升至 ' + (nx[1] + (useX ? t.xp.baseAdd : 0)) + unit + '。';
+    }
+  }
+  let expired = '';
+  if (t.end) expired = new Date() > new Date(t.end + 'T23:59:59') ? '此優惠的推廣期已於 ' + t.end + ' 結束，請更新優惠規則。' : '';
+
+  return { prod, t, P, levy, unit, base, ext, total, years, lifelong, rows, disp, totOrig, totDed, totNet: totOrig - totDed, hint, expired, upfront, summary: lines.join('\n') };
+}
+
+// ---------- 畫面 ----------
+function planHtml(p, i) {
+  const prod = getProd(p), t = getTerm(p), yrs = t.years || 5;
+  const f = (label, k, ph) => '<div><label>' + label + '</label><input type="text" inputmode="decimal" data-i="' + i + '" data-k="' + k + '" value="' + esc(p[k]) + '" placeholder="' + (ph || '') + '"></div>';
+  let h = '<section><div class="bar"><input type="text" class="pname" data-i="' + i + '" data-k="name" value="' + esc(p.name) + '">' +
+    '<button class="btn alt" data-act="copy" data-i="' + i + '">複製方案</button><button class="btn alt" data-act="del" data-i="' + i + '">刪除</button></div><div class="grid">';
+  h += '<div><label>產品</label><select data-i="' + i + '" data-k="pid">' + R.products.map(x => '<option value="' + esc(x.id) + '"' + (x.id === prod.id ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></div>';
+  h += '<div><label>保費繳付期</label><select data-i="' + i + '" data-k="ti">' + prod.terms.map((x, j) => '<option value="' + j + '"' + (x === t ? ' selected' : '') + '>' + esc(x.term) + '</option>').join('') + '</select></div>';
+  h += f('保費金額（年繳／一次性）', 'prem') + f('每年保費徵費', 'levy', '自動計算') + f('電子保費現金券金額', 'coupon', '0');
+  h += '<div><label>其他優惠名稱</label><input type="text" data-i="' + i + '" data-k="oName" value="' + esc(p.oName) + '"></div>' + f('其他優惠（佔保費 %）', 'oPct', '0');
+  if (p.prepay && t.years > 1) h += f('預繳優惠年利率（%）', 'preR') + f('預繳年數', 'preN', String(yrs - 1));
+  h += '</div><div class="checks">';
+  (t.extras || []).forEach((e, j) => {
+    h += '<label><input type="checkbox" data-i="' + i + '" data-k="ex" data-j="' + j + '"' + (p.ex[j] ? ' checked' : '') + '> ' + esc(e.label) + '（+' + e.add + (t.unit === 'm' ? '個月' : '%') + '）</label>';
+  });
+  if (t.xp) h += '<label><input type="checkbox" data-i="' + i + '" data-k="xp"' + (p.xp ? ' checked' : '') + '> 同時繳付定期保費及額外保費</label>';
+  if (t.years > 1) h += '<label><input type="checkbox" data-i="' + i + '" data-k="prepay"' + (p.prepay ? ' checked' : '') + '> 預繳保費</label>';
+  h += '</div><div id="res' + i + '"></div></section>';
+  return h;
+}
+
+function renderRes(i) {
+  const c = calc(plans[i]);
+  let h = '';
+  if (c.expired) h += '<div class="warn">' + c.expired + '</div>';
+  else if (c.t.end) h += '<div class="tip">推廣期至 ' + c.t.end + '</div>';
+  if (c.hint) h += '<div class="tip">' + c.hint + '</div>';
+  h += '<div class="cards">' +
+    '<div class="card"><small>基本優惠＋額外優惠</small><b>' + c.base + c.unit + ' + ' + c.ext + c.unit + '</b></div>' +
+    '<div class="card"><small>總優惠金額</small><b>' + cur + f0(c.totDed) + '</b></div>' +
+    '<div class="card"><small>' + (c.lifelong ? '首5年實繳總額' : '實繳總額') + '</small><b>' + cur + f2(c.totNet) + '</b></div>' +
+    '<div class="card"><small>總優惠 ÷ 年繳保費</small><b>' + (c.P ? (c.totDed / c.P * 100).toFixed(2) + '%' : '—') + '</b></div>' +
+    (c.upfront ? '<div class="card"><small>投保時一次性支付（未扣優惠）</small><b>' + cur + f0(c.upfront) + '</b></div>' : '') + '</div>';
+  h += '<div class="scroll"><table><thead><tr><th>保單年度</th><th class="n">原保費<br>（包括保費徵費）</th><th>優惠／回贈詳情</th><th class="n">扣減金額<br>（四捨五入整數）</th><th class="n">實繳保費</th></tr></thead><tbody>';
+  c.disp.forEach(r => {
+    const multi = r.items.length > 1;
+    h += '<tr><td>' + r.label + '</td><td class="n">' + f2(r.orig) + '</td><td>' +
+      (r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + esc(x.label)).join('<br>') : '/') + '</td><td class="n neg">' +
+      (r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + '-' + f0(x.amt)).join('<br>') : '/') + '</td><td class="n pay">' + f2(r.net) + '</td></tr>';
+  });
+  h += '<tr class="tot"><td>' + (c.lifelong ? '首5年合計' : '總計') + '</td><td class="n">' + f2(c.totOrig) + '</td><td></td><td class="n neg">-' + f0(c.totDed) + '</td><td class="n">' + f2(c.totNet) + '</td></tr></tbody></table></div>';
+  if (c.summary) h += '<div class="sumbox"><div class="bar"><b>優惠摘要（客戶版）</b><button class="btn alt" data-act="cp" data-i="' + i + '">複製文字</button></div><div class="sumtxt">' + esc(c.summary) + '</div></div>';
+  $('res' + i).innerHTML = h;
+}
+
+function renderCmp() {
+  let h = '<thead><tr><th>方案</th><th>產品</th><th class="n">保費金額</th><th class="n">總原保費</th><th class="n">總優惠</th><th class="n">實繳總額</th><th class="n">總優惠 ÷ 年繳保費</th></tr></thead><tbody>';
+  plans.forEach(p => {
+    const c = calc(p);
+    h += '<tr><td>' + esc(p.name) + '</td><td>' + esc(c.prod.name) + '（' + esc(c.t.term) + '）</td><td class="n">' + f0(c.P) + '</td><td class="n">' + f2(c.totOrig) +
+      '</td><td class="n neg">-' + f0(c.totDed) + '</td><td class="n">' + f2(c.totNet) + '</td><td class="n">' + (c.P ? (c.totDed / c.P * 100).toFixed(2) + '%' : '—') + '</td></tr>';
+  });
+  $('cmp').innerHTML = h + '</tbody>';
+}
+
+function renderPlans() {
+  $('plans').innerHTML = plans.map(planHtml).join('');
+  plans.forEach((p, i) => renderRes(i));
+  renderCmp();
+}
+
+function renderHead() {
+  $('ver').textContent = '目前規則：' + (R.version || '未命名');
+  const keys = Object.keys(R.fx || { 'US$': 1 });
+  if (!keys.includes(cur)) cur = keys[0];
+  $('cur').innerHTML = keys.map(k => '<option' + (k === cur ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
+  $('rulesTxt').value = JSON.stringify(R, null, 1);
+}
+
+// ---------- 事件 ----------
+$('plans').addEventListener('input', ev => {
+  const t = ev.target, k = t.dataset.k;
+  if (!k || t.type === 'checkbox' || t.tagName === 'SELECT') return;
+  const i = +t.dataset.i;
+  plans[i][k] = t.value; renderRes(i); renderCmp();
+});
+$('plans').addEventListener('change', ev => {
+  const t = ev.target, k = t.dataset.k;
+  if (!k) return;
+  const p = plans[+t.dataset.i];
+  if (t.tagName === 'SELECT') {
+    if (k === 'pid') { p.pid = t.value; p.ti = 0; p.xp = false; } else p.ti = +t.value;
+    p.ex = []; renderPlans();
+  } else if (t.type === 'checkbox') {
+    if (k === 'ex') p.ex[+t.dataset.j] = t.checked; else p[k] = t.checked;
+    renderPlans();
+  }
+});
+$('plans').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-act]'); if (!b) return;
+  const i = +b.dataset.i, act = b.dataset.act;
+  if (act === 'cp') {
+    const txt = plans[i].name + '\n' + calc(plans[i]).summary;
+    const pr = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(txt) : Promise.reject();
+    pr.then(() => { b.textContent = '已複製'; }).catch(() => alert('未能自動複製，請長按摘要文字手動選取。'));
+    return;
+  }
+  if (act === 'del') plans.splice(i, 1);
+  else { const cp = JSON.parse(JSON.stringify(plans[i])); cp.name += '（副本）'; plans.splice(i + 1, 0, cp); }
+  renderPlans();
+});
+$('addPlan').addEventListener('click', () => { plans.push(newPlan()); renderPlans(); });
+$('cur').addEventListener('change', () => { cur = $('cur').value; renderPlans(); });
+
+// ---------- 規則更新 ----------
+function setRules(obj, msg) {
+  if (!obj || !Array.isArray(obj.products) || !obj.products.length || obj.products.some(x => !x.id || !Array.isArray(x.terms) || !x.terms.length || x.terms.some(t => !Array.isArray(t.tiers) || !t.tiers.length)))
+    throw new Error('規則格式不正確');
+  if (!obj.fx) obj.fx = { 'US$': 1 };
+  if (!obj.levy) obj.levy = { rate: 0, cap: {} };
+  if (!obj.levy.cap) obj.levy.cap = {};
+  R = obj;
+  plans.forEach(p => { if (!R.products.some(x => x.id === p.pid)) { p.pid = R.products[0].id; } p.ti = 0; p.ex = []; p.xp = false; });
+  renderHead(); renderPlans();
+  $('rulesMsg').textContent = msg || '';
+}
+$('applyRules').addEventListener('click', () => {
+  try { setRules(JSON.parse($('rulesTxt').value), '已套用。'); } catch (e) { $('rulesMsg').textContent = '套用失敗：' + e.message; }
+});
+$('resetRules').addEventListener('click', () => setRules(JSON.parse(JSON.stringify(DEFAULT_RULES)), '已還原內置規則。'));
+$('dlRules').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([$('rulesTxt').value], { type: 'application/json' }));
+  a.download = 'rules.json'; a.click();
+});
+$('upRules').addEventListener('click', () => $('rulesFile').click());
+$('rulesFile').addEventListener('change', async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  try { setRules(JSON.parse(await f.text()), '已匯入 ' + f.name + '。'); } catch (e) { $('rulesMsg').textContent = '匯入失敗：' + e.message; }
+  ev.target.value = '';
+});
+
+// ---------- 匯出 Excel ----------
+$('exp').addEventListener('click', () => {
+  const wb = XLSX.utils.book_new();
+  const cmp = [['方案', '產品', '繳付期', '保費金額', '總原保費', '總優惠', '實繳總額', '貨幣']];
+  const sheets = [];
+  plans.forEach((p, i) => {
+    const c = calc(p);
+    cmp.push([p.name, c.prod.name, c.t.term, c.P, r2(c.totOrig), -c.totDed, r2(c.totNet), cur]);
+    const aoa = [[p.name], ['產品', c.prod.name + '（' + c.t.term + '）'], ['保費金額', c.P], ['貨幣', cur], ['優惠規則', R.version || ''], [],
+      ['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額', '實繳保費']];
+    c.disp.forEach(r => aoa.push([r.label, r2(r.orig), r.items.map(x => x.label + ' -' + f0(x.amt)).join('；') || '/', -r.ded, r2(r.net)]));
+    aoa.push([c.lifelong ? '首5年合計' : '總計', r2(c.totOrig), '', -c.totDed, r2(c.totNet)]);
+    if (c.summary) { aoa.push([]); aoa.push(['優惠摘要']); c.summary.split('\n').forEach(l => aoa.push([l])); }
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 26 }, { wch: 22 }, { wch: 60 }, { wch: 12 }, { wch: 14 }];
+    sheets.push([ws, '方案' + (i + 1)]);
+  });
+  const ws0 = XLSX.utils.aoa_to_sheet(cmp);
+  ws0['!cols'] = [{ wch: 18 }, { wch: 40 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 6 }];
+  XLSX.utils.book_append_sheet(wb, ws0, '方案比較');
+  sheets.forEach(s => XLSX.utils.book_append_sheet(wb, s[0], s[1]));
+  XLSX.writeFile(wb, '保費優惠計算.xlsx');
+});
+
+// ---------- 啟動 ----------
+plans.push(newPlan({ name: '方案1：預繳', prem: '100,000', prepay: true }));
+plans.push(newPlan({ name: '方案2：不預繳', prem: '100,000' }));
+renderHead(); renderPlans();
+// 如同一資料夾有 rules.json，自動採用（每月只需更換該檔案）
+fetch('rules.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j) setRules(j, '已載入 rules.json。'); }).catch(() => {});
+</script>
+</body>
+</html>
