@@ -6,52 +6,77 @@
 <title>保費優惠計算器</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
+  :root{--navy:#0f172a;--navy2:#1e293b;--gold:#d97706;--gold2:#f59e0b;--soft:#fffbeb;--line:#e2e8f0;--mut:#64748b;--bg:#f1f5f9;--red:#dc2626}
   *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;background:#f4f6fa;color:#1f2937}
-  header{background:linear-gradient(135deg,#7c2d12,#c2410c);color:#fff;padding:26px 20px}
-  header h1{margin:0 0 6px;font-size:24px}
-  header p{margin:0;opacity:.9;font-size:14px}
-  main{max-width:1100px;margin:0 auto;padding:20px}
-  section{background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  body{margin:0;font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--navy);-webkit-font-smoothing:antialiased}
+  header{background:radial-gradient(circle at 85% 0%,#334155 0%,transparent 55%),linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:40px 20px 70px}
+  .hd{max-width:1100px;margin:0 auto}
+  .eyebrow{display:inline-block;font-size:12px;letter-spacing:2px;color:var(--gold2);border:1px solid rgba(245,158,11,.5);border-radius:999px;padding:4px 12px;margin-bottom:14px}
+  header h1{margin:0 0 8px;font-size:30px;letter-spacing:1px}
+  header p{margin:0;color:#cbd5e1;font-size:13px}
+  main{max-width:1100px;margin:-44px auto 0;padding:0 16px 20px}
+  section{background:#fff;border-radius:18px;padding:22px;margin-bottom:20px;box-shadow:0 10px 30px rgba(15,23,42,.07);border:1px solid rgba(226,232,240,.8)}
+  section.plan{border-top:4px solid var(--gold2)}
   h2{margin:0 0 14px;font-size:18px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
-  label{font-size:13px;color:#4b5563}
-  .grid label{display:block;margin-bottom:4px}
-  input[type=text],select,textarea{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;font-family:inherit}
-  .pname{font-size:18px;font-weight:700;color:#c2410c;flex:1;min-width:160px}
+  label{font-size:12px;color:var(--mut);font-weight:600}
+  .grid label{display:block;margin-bottom:5px}
+  input[type=text],select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;background:#f8fafc;color:var(--navy);transition:.15s}
+  input[type=text]:focus,select:focus,textarea:focus{outline:0;border-color:var(--gold2);background:#fff;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+  input.pname{font-size:20px;font-weight:800;color:var(--navy);flex:1;min-width:160px;background:transparent;border-color:transparent;padding-left:4px}
   .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
-  .btn{background:#c2410c;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-size:14px;cursor:pointer}
-  .btn.alt{background:#fff;color:#c2410c;border:1px solid #c2410c}
-  .btn.green{background:#15803d}
-  .checks{display:flex;flex-wrap:wrap;gap:8px 18px;margin:14px 0}
-  .checks label{font-size:14px;color:#1f2937}
-  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:14px 0}
-  .card{background:#fff7ed;border-radius:10px;padding:12px 14px}
-  .card small{color:#4b5563;font-size:12px}
-  .card b{display:block;font-size:18px;color:#7c2d12;margin-top:4px}
-  .tip{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:10px}
-  .warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:10px}
-  .scroll{overflow:auto;border:1px solid #e5e7eb;border-radius:8px}
-  table{border-collapse:collapse;width:100%;font-size:14px}
-  th,td{border-bottom:1px solid #e5e7eb;padding:8px 10px;text-align:left;vertical-align:top}
-  th{background:#fef3c7;white-space:nowrap}
-  td.n,th.n{text-align:right;white-space:nowrap}
-  td.pay{background:#fee2e2;font-weight:600}
-  tr.tot td{background:#ede9fe;font-weight:700}
-  .neg{color:#b91c1c}
-  .note{font-size:12px;color:#6b7280;margin-top:8px;line-height:1.7}
-  .sumbox{margin-top:14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px}
+  .btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:0;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(217,119,6,.25)}
+  .btn.alt{background:#fff;color:var(--navy2);border:1px solid var(--line);box-shadow:none}
+  .btn.dark{background:var(--navy);box-shadow:0 4px 12px rgba(15,23,42,.25)}
+  .btn.sm{padding:7px 14px;font-size:13px}
+  .checks{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+  .checks label{font-size:13px;color:var(--navy2);font-weight:500;background:#f8fafc;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
+  .checks input{accent-color:#d97706;margin-right:4px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin:16px 0}
+  .card{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .card small{color:var(--mut);font-size:12px;font-weight:600}
+  .card b{display:block;font-size:21px;margin-top:6px}
+  .card.hi{background:linear-gradient(135deg,#0f172a,#1e293b);border-color:transparent}
+  .card.hi small{color:#cbd5e1}
+  .card.hi b{color:var(--gold2)}
+  .bd{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:16px 0}
+  .bd-h{background:#f8fafc;padding:10px 16px;font-size:13px;font-weight:700;color:var(--mut);border-bottom:1px solid var(--line)}
+  .brow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .brow:last-child{border-bottom:0}
+  .bname{flex:1;min-width:150px;font-size:14px;font-weight:600}
+  .btag{font-size:12px;font-weight:700;color:#92400e;background:#fef3c7;border-radius:999px;padding:3px 10px}
+  .bamt{min-width:110px;text-align:right;font-size:16px;font-weight:800}
+  .brow.btot{background:var(--soft)}
+  .brow.btot .bamt{color:var(--gold);font-size:19px}
+  .tip{background:var(--soft);border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
+  .warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
+  .th-bar{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px}
+  .th-bar b{font-size:15px}
+  .scroll{overflow:auto;border:1px solid var(--line);border-radius:14px}
+  .tbl{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;font-size:14px}
+  .tbl th{background:var(--navy2);color:#fff;padding:13px 10px;text-align:center;font-weight:600;line-height:1.5}
+  .tbl td{padding:13px 10px;text-align:center;vertical-align:middle;border-bottom:1px solid var(--line);line-height:1.7}
+  .tbl tbody tr:nth-child(even) td{background:#f8fafc}
+  .tbl tbody tr td.yr{font-weight:700}
+  .tbl tbody tr td.ded{color:var(--red);font-weight:600}
+  .tbl tbody tr td.pay{background:#fff7ed;color:#9a3412;font-weight:800}
+  .tbl tbody tr.tot td{background:#fef3c7;font-weight:800;border-top:2px solid var(--gold2);border-bottom:0}
+  .note{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.7}
+  .sumbox{margin-top:18px;background:#f8fafc;border:1px solid var(--line);border-left:4px solid var(--gold2);border-radius:12px;padding:14px 16px}
   .sumbox .bar{margin-bottom:6px;justify-content:space-between}
   .sumtxt{white-space:pre-wrap;font-size:14px;line-height:1.9}
   summary{cursor:pointer;font-weight:700;font-size:16px}
   textarea{height:260px;font-family:Menlo,Consolas,monospace;font-size:12px;margin:12px 0}
-  footer{font-size:12px;color:#6b7280;text-align:center;padding:10px 20px 30px}
+  footer{font-size:12px;color:var(--mut);text-align:center;padding:6px 20px 34px}
 </style>
 </head>
 <body>
 <header>
-  <h1>保費優惠計算器</h1>
-  <p id="ver"></p>
+  <div class="hd">
+    <span class="eyebrow">PREMIUM OFFER CALCULATOR</span>
+    <h1>保費優惠計算器</h1>
+    <p id="ver"></p>
+  </div>
 </header>
 <main>
   <section>
@@ -59,29 +84,28 @@
       <label>貨幣</label>
       <select id="cur" style="width:110px"></select>
       <button class="btn" id="addPlan">＋ 新增方案</button>
-      <button class="btn green" id="exp" style="margin-left:auto">⬇ 匯出 Excel</button>
+      <button class="btn dark" id="exp" style="margin-left:auto">⬇ 匯出 Excel</button>
     </div>
-    <div id="chk" style="font-size:13px;color:#4b5563;margin-top:10px"></div>
   </section>
 
   <div id="plans"></div>
 
   <section>
     <h2>方案比較</h2>
-    <div class="scroll"><table id="cmp"></table></div>
+    <div class="scroll"><table id="cmp" class="tbl"></table></div>
   </section>
 
   <section>
     <details>
       <summary>⚙️ 優惠規則（每期更新）</summary>
-      <p style="font-size:13px;color:#4b5563">修改或貼上新規則後按「套用」即時生效（只限本次開啟）。要永久更新，請把內容存成 <b>rules.json</b> 放到 GitHub 同一資料夾。</p>
+      <p style="font-size:13px;color:#64748b">修改或貼上新規則後按「套用」即時生效（只限本次開啟）。要永久更新，請把內容存成 <b>rules.json</b> 放到 GitHub 同一資料夾。</p>
       <textarea id="rulesTxt" spellcheck="false"></textarea>
       <div class="bar" style="margin:0">
-        <button class="btn" id="applyRules">套用</button>
-        <button class="btn alt" id="resetRules">還原內置規則</button>
-        <button class="btn alt" id="dlRules">下載 rules.json</button>
+        <button class="btn sm" id="applyRules">套用</button>
+        <button class="btn alt sm" id="resetRules">還原內置規則</button>
+        <button class="btn alt sm" id="dlRules">下載 rules.json</button>
         <input type="file" id="rulesFile" accept=".json" style="display:none">
-        <button class="btn alt" id="upRules">匯入規則檔</button>
+        <button class="btn alt sm" id="upRules">匯入規則檔</button>
         <span id="rulesMsg" style="font-size:13px;color:#b45309"></span>
       </div>
     </details>
@@ -99,6 +123,7 @@ const r2 = v => Math.round(v * 100) / 100;
 const fl = v => Math.floor(v + 1e-6);
 const CUR_NAME = { 'US$': '美元', 'HK$': '港元' };
 const NUMS = '一二三四五六七八九十';
+const TH = ['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額（整數）', '實繳保費'];
 
 // ---------- 內置優惠規則（AIA 2026年第四季單張）----------
 // tiers: [最低年度化保費(美元), 基本優惠]；unit: "%" 或 "m"(個月)
@@ -119,14 +144,12 @@ const DEFAULT_RULES = {
   fx: { 'US$': 1, 'HK$': 7.5 },
   levy: { rate: 0.001, cap: { 'US$': 12.84, 'HK$': 100 } },
   // 預繳保費保證優惠息率：options 的 n = 預繳保費期；tiers = [最低年繳保費(美元), 保證年利率%]
-  // examples = 單張上的例子，用來自動核對算法
   prepay: {
     end: '2026-11-30',
     products: ['yingyu', 'huanyu', 'caifu'],
     termYears: 5,
     currencies: ['US$'],
-    options: [ { n: 1, tiers: [[0, 4.8]] }, { n: 4, tiers: [[0, 4.3], [200000, 4.5]] } ],
-    examples: [ { prem: 30000, n: 1, total: 1440 }, { prem: 30000, n: 4, total: 14045 }, { prem: 200000, n: 4, total: 98376 } ]
+    options: [ { n: 1, tiers: [[0, 4.8]] }, { n: 4, tiers: [[0, 4.3], [200000, 4.5]] } ]
   },
   products: [
     { id: 'yingyu', name: '儲蓄 - 盈御多元貨幣儲蓄保險計劃3', terms: [
@@ -192,17 +215,6 @@ function prepayInterest(P, n, rate) {
   for (let k = 0; k < n; k++) { const I = B * rate / 100; a.push(I); B = B + I - P; }
   return a;
 }
-function checkPrepay() {
-  const pp = R.prepay;
-  if (!pp || !Array.isArray(pp.examples) || !pp.examples.length) return '';
-  let ok = 0;
-  pp.examples.forEach(e => {
-    const o = pp.options.find(x => x.n === e.n); if (!o) return;
-    const tot = fl(prepayInterest(e.prem, e.n, tierRate(o.tiers, e.prem)).reduce((a, b) => a + b, 0));
-    if (tot === e.total) ok++;
-  });
-  return '預繳算法核對：單張 ' + pp.examples.length + ' 個例子中 ' + ok + ' 個相符 ' + (ok === pp.examples.length ? '✅' : '⚠️ 請檢查規則');
-}
 
 // ---------- 計算 ----------
 function calc(p) {
@@ -226,36 +238,40 @@ function calc(p) {
   const levy = String(p.levy).trim() !== '' ? num(p.levy) : Math.min(P * R.levy.rate, (R.levy.cap[cur] || 0));
   const rows = [], sum = [];
   for (let y = 1; y <= years; y++) rows.push({ y, orig: P + levy, items: [] });
-  // g = 摘要內的分組名稱；pre = 預繳優惠
+  // g = 摘要內的分組名稱；pre = 預繳優惠；回傳實際加入的金額
   const add = (y, label, amt, g, pre) => {
     amt = Math.round(amt);
-    if (y > years || amt <= 0) return;
+    if (y > years || amt <= 0) return 0;
     rows[y - 1].items.push({ label, amt });
     g = g || label;
     let s0 = sum.find(x => x.g === g);
     if (!s0) { s0 = { g, amt: 0, ys: [], pre: !!pre }; sum.push(s0); }
     s0.amt += amt;
     if (!s0.ys.includes(y)) s0.ys.push(y);
+    return amt;
   };
   const val = x => t.unit === 'm' ? P / 12 * x : P * x / 100;
   const s = t.sched || { mode: 'once' };
 
-  add(1, '電子保費現金券', num(p.coupon));
-  if (s.mode === 'upfront') add(1, '保費折扣（' + total + '%）', val(total));
+  const couponAmt = add(1, '電子保費現金券', num(p.coupon));
+  let rb = 0;
+  if (s.mode === 'upfront') rb += add(1, '保費折扣（' + total + '%）', val(total));
   else if (s.mode === 'once') {
-    add(2, '保費回贈優惠（' + base + unit + '）', val(base));
-    add(2, '額外保費回贈優惠（' + ext + unit + '）', val(ext));
+    rb += add(2, '基本保費回贈（' + base + unit + '）', val(base));
+    rb += add(2, '配搭指定產品額外優惠（' + ext + unit + '）', val(ext));
   } else if (s.mode === 'equal') {
-    for (let k = 0; k < s.n; k++) add(k + 2, '保費回贈優惠（共' + total + unit + '，分' + s.n + '年）', val(total) / s.n);
+    for (let k = 0; k < s.n; k++) rb += add(k + 2, '保費回贈優惠（共' + total + unit + '，分' + s.n + '年）', val(total) / s.n);
   } else if (s.mode === 'steps') {
     const st = useX ? t.xp.steps : s.steps;
     const g = '保費回贈優惠（共' + total + unit + '）';
     let rem = total;
-    st.forEach((m, k) => { const q = Math.min(m, rem); add(k + 2, '保費回贈（' + q + unit + '）', val(q), g); rem -= q; });
-    add(st.length + 2, '保費回贈（' + rem + unit + '）', val(rem), g);
+    st.forEach((m, k) => { const q = Math.min(m, rem); rb += add(k + 2, '保費回贈（' + q + unit + '）', val(q), g); rem -= q; });
+    rb += add(st.length + 2, '保費回贈（' + rem + unit + '）', val(rem), g);
   }
+  let baseAmt = rb, extAmt = 0;
+  if (ext > 0) { baseAmt = Math.min(rb, Math.round(val(base))); extAmt = rb - baseAmt; }
   const oP = num(p.oPct);
-  add(s.mode === 'upfront' ? 1 : 2, (p.oName || '其他優惠') + '（' + oP + '%）', P * oP / 100);
+  const otherAmt = add(s.mode === 'upfront' ? 1 : 2, (p.oName || '其他優惠') + '（' + oP + '%）', P * oP / 100);
 
   // 預繳保費優惠利息（各年向下取整；總額按未取整利息相加後向下取整，與單張例子一致）
   let pre = null;
@@ -320,16 +336,31 @@ function calc(p) {
     if (isPast(R.prepay.end)) warns.push('預繳優惠的推廣期已於 ' + R.prepay.end + ' 結束，請更新優惠規則。');
     else period += (period ? '；' : '') + '預繳優惠推廣期至 ' + R.prepay.end + '（名額有限）';
   }
+  const pctTxt = P ? (totDed / P * 100).toFixed(2) + '%' : '—';
 
-  return { prod, t, P, levy, unit, base, ext, total, years, lifelong, rows, disp, totOrig, totDed, totNet: totOrig - totDed, hints, warns, period, pre, summary: lines.join('\n') };
+  return { prod, t, P, levy, unit, base, ext, total, years, lifelong, rows, disp, totOrig, totDed, totNet: totOrig - totDed,
+    baseAmt, extAmt, otherAmt, couponAmt, oP, pctTxt, upfrontMode: s.mode === 'upfront', hints, warns, period, pre, summary: lines.join('\n') };
+}
+
+// 每年實繳保費表格的資料（畫面及複製共用）
+function tableRows(c) {
+  const body = c.disp.map(r => {
+    const multi = r.items.length > 1;
+    return [r.label, f2(r.orig),
+      r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + x.label) : ['/'],
+      r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + '-' + f0(x.amt)) : ['/'],
+      f2(r.net)];
+  });
+  body.push([c.lifelong ? '首5年合計' : '總計', f2(c.totOrig), [''], ['-' + f0(c.totDed)], f2(c.totNet)]);
+  return body;
 }
 
 // ---------- 畫面 ----------
 function planHtml(p, i) {
   const prod = getProd(p), t = getTerm(p), canPre = prepayOK(p);
   const f = (label, k, ph) => '<div><label>' + label + '</label><input type="text" inputmode="decimal" data-i="' + i + '" data-k="' + k + '" value="' + esc(p[k]) + '" placeholder="' + (ph || '') + '"></div>';
-  let h = '<section><div class="bar"><input type="text" class="pname" data-i="' + i + '" data-k="name" value="' + esc(p.name) + '">' +
-    '<button class="btn alt" data-act="copy" data-i="' + i + '">複製方案</button><button class="btn alt" data-act="del" data-i="' + i + '">刪除</button></div><div class="grid">';
+  let h = '<section class="plan"><div class="bar"><input type="text" class="pname" data-i="' + i + '" data-k="name" value="' + esc(p.name) + '">' +
+    '<button class="btn alt sm" data-act="copy" data-i="' + i + '">複製方案</button><button class="btn alt sm" data-act="del" data-i="' + i + '">刪除</button></div><div class="grid">';
   h += '<div><label>產品</label><select data-i="' + i + '" data-k="pid">' + R.products.map(x => '<option value="' + esc(x.id) + '"' + (x.id === prod.id ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></div>';
   h += '<div><label>保費繳付期</label><select data-i="' + i + '" data-k="ti">' + prod.terms.map((x, j) => '<option value="' + j + '"' + (x === t ? ' selected' : '') + '>' + esc(x.term) + '</option>').join('') + '</select></div>';
   h += f('保費金額（年繳／一次性）', 'prem') + f('每年保費徵費', 'levy', '自動計算') + f('電子保費現金券金額', 'coupon', '0');
@@ -337,7 +368,7 @@ function planHtml(p, i) {
   if (p.prepay && canPre) {
     const sel = prepayOpt(p);
     h += '<div><label>預繳保費期</label><select data-i="' + i + '" data-k="preN">' + R.prepay.options.map(o => '<option value="' + o.n + '"' + (o === sel ? ' selected' : '') + '>' + o.n + '年（投保時繳付' + (o.n + 1) + '年保費）</option>').join('') + '</select></div>';
-    h += f('預繳保證年利率（%）', 'preR', '按單張自動套用');
+    h += f('預繳保證年利率（%）', 'preR', '自動計算');
   }
   h += '</div><div class="checks">';
   (t.extras || []).forEach((e, j) => {
@@ -350,38 +381,47 @@ function planHtml(p, i) {
 }
 
 function renderRes(i) {
-  const c = calc(plans[i]);
+  const p = plans[i], c = calc(p);
   let h = '';
   c.warns.forEach(w => { h += '<div class="warn">' + w + '</div>'; });
   if (c.period) h += '<div class="tip">' + c.period + '</div>';
   c.hints.forEach(x => { h += '<div class="tip">' + x + '</div>'; });
+
   h += '<div class="cards">' +
-    '<div class="card"><small>基本回贈＋額外回贈</small><b>' + c.base + c.unit + ' + ' + c.ext + c.unit + '</b></div>' +
-    (c.pre ? '<div class="card"><small>預繳保證年利率（預繳' + c.pre.n + '年）</small><b>' + c.pre.rate + '%</b></div>' +
-      '<div class="card"><small>預繳優惠利息合共（約' + c.pre.pct.toFixed(1) + '%首年年繳保費）</small><b>' + cur + f0(c.pre.tot) + '</b></div>' +
-      '<div class="card"><small>投保時一次性支付（保費，未計徵費及優惠）</small><b>' + cur + f0(c.pre.upfront) + '</b></div>' : '') +
-    '<div class="card"><small>總優惠金額</small><b>' + cur + f0(c.totDed) + '</b></div>' +
+    '<div class="card hi"><small>總優惠金額</small><b>' + cur + f0(c.totDed) + '</b></div>' +
+    '<div class="card hi"><small>總優惠百分比</small><b>' + c.pctTxt + '</b></div>' +
     '<div class="card"><small>' + (c.lifelong ? '首5年實繳總額' : '實繳總額') + '</small><b>' + cur + f2(c.totNet) + '</b></div>' +
-    '<div class="card"><small>總優惠 ÷ 年繳保費</small><b>' + (c.P ? (c.totDed / c.P * 100).toFixed(2) + '%' : '—') + '</b></div></div>';
-  h += '<div class="scroll"><table><thead><tr><th>保單年度</th><th class="n">原保費<br>（包括保費徵費）</th><th>優惠／回贈詳情</th><th class="n">扣減金額<br>（整數）</th><th class="n">實繳保費</th></tr></thead><tbody>';
-  c.disp.forEach(r => {
-    const multi = r.items.length > 1;
-    h += '<tr><td>' + r.label + '</td><td class="n">' + f2(r.orig) + '</td><td>' +
-      (r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + esc(x.label)).join('<br>') : '/') + '</td><td class="n neg">' +
-      (r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + '-' + f0(x.amt)).join('<br>') : '/') + '</td><td class="n pay">' + f2(r.net) + '</td></tr>';
+    (c.pre ? '<div class="card"><small>投保時一次性支付（保費，未計徵費及優惠）</small><b>' + cur + f0(c.pre.upfront) + '</b></div>' : '') + '</div>';
+
+  const row = (name, tag, amt) => '<div class="brow"><span class="bname">' + name + '</span><span class="btag">' + tag + '</span><span class="bamt">' + cur + f0(amt) + '</span></div>';
+  const oName = (p.oName && p.oName !== '其他優惠') ? '其他優惠｜' + esc(p.oName) : '其他優惠';
+  h += '<div class="bd"><div class="bd-h">優惠明細</div>' +
+    row(c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt) +
+    row('配搭指定產品額外優惠', c.ext + c.unit, c.extAmt) +
+    row(oName, c.oP + '%', c.otherAmt) +
+    (c.couponAmt ? row('電子保費現金券', '現金券', c.couponAmt) : '') +
+    (c.pre ? row('預繳優惠利息', '預繳' + c.pre.n + '年・年利率 ' + c.pre.rate + '%', c.pre.tot) : '') +
+    '<div class="brow btot"><span class="bname">總優惠金額</span><span class="btag">' + c.pctTxt + '</span><span class="bamt">' + cur + f0(c.totDed) + '</span></div></div>';
+
+  const body = tableRows(c);
+  h += '<div class="th-bar"><b>每年實繳保費</b><button class="btn alt sm" data-act="cpt" data-i="' + i + '">複製表格</button></div>';
+  h += '<div class="scroll"><table class="tbl"><thead><tr><th>保單年度</th><th>原保費<br>（包括保費徵費）</th><th>優惠／回贈詳情</th><th>扣減金額<br>（整數）</th><th>實繳保費</th></tr></thead><tbody>';
+  body.forEach((r, k) => {
+    h += '<tr' + (k === body.length - 1 ? ' class="tot"' : '') + '><td class="yr">' + esc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2].map(esc).join('<br>') +
+      '</td><td class="ded">' + r[3].map(esc).join('<br>') + '</td><td class="pay">' + r[4] + '</td></tr>';
   });
-  h += '<tr class="tot"><td>' + (c.lifelong ? '首5年合計' : '總計') + '</td><td class="n">' + f2(c.totOrig) + '</td><td></td><td class="n neg">-' + f0(c.totDed) + '</td><td class="n">' + f2(c.totNet) + '</td></tr></tbody></table></div>';
-  if (c.pre) h += '<div class="note">註：預繳優惠利息實際是存入保單的現金儲備金戶口，上表為方便比較，按年列作扣減。各年利息按單張例子向下取整顯示，總計按未取整利息計算，故與各年相加可能相差 1 至 2 元。</div>';
-  if (c.summary) h += '<div class="sumbox"><div class="bar"><b>優惠摘要（客戶版）</b><button class="btn alt" data-act="cp" data-i="' + i + '">複製文字</button></div><div class="sumtxt">' + esc(c.summary) + '</div></div>';
+  h += '</tbody></table></div>';
+  if (c.pre) h += '<div class="note">註：預繳優惠利息實際是存入保單的現金儲備金戶口，上表為方便比較，按年列作扣減。各年利息向下取整顯示，總計按未取整利息計算，故與各年相加可能相差 1 至 2 元。</div>';
+  if (c.summary) h += '<div class="sumbox"><div class="bar"><b>優惠摘要（客戶版）</b><button class="btn alt sm" data-act="cp" data-i="' + i + '">複製文字</button></div><div class="sumtxt">' + esc(c.summary) + '</div></div>';
   $('res' + i).innerHTML = h;
 }
 
 function renderCmp() {
-  let h = '<thead><tr><th>方案</th><th>產品</th><th class="n">保費金額</th><th class="n">總原保費</th><th class="n">總優惠</th><th class="n">實繳總額</th><th class="n">總優惠 ÷ 年繳保費</th></tr></thead><tbody>';
+  let h = '<thead><tr><th>方案</th><th>產品</th><th>保費金額</th><th>總原保費</th><th>總優惠</th><th>實繳總額</th><th>總優惠百分比</th></tr></thead><tbody>';
   plans.forEach(p => {
     const c = calc(p);
-    h += '<tr><td>' + esc(p.name) + '</td><td>' + esc(c.prod.name) + '（' + esc(c.t.term) + (c.pre ? '，預繳' + c.pre.n + '年' : '') + '）</td><td class="n">' + f0(c.P) + '</td><td class="n">' + f2(c.totOrig) +
-      '</td><td class="n neg">-' + f0(c.totDed) + '</td><td class="n">' + f2(c.totNet) + '</td><td class="n">' + (c.P ? (c.totDed / c.P * 100).toFixed(2) + '%' : '—') + '</td></tr>';
+    h += '<tr><td class="yr">' + esc(p.name) + '</td><td>' + esc(c.prod.name) + '（' + esc(c.t.term) + (c.pre ? '，預繳' + c.pre.n + '年' : '') + '）</td><td>' + f0(c.P) + '</td><td>' + f2(c.totOrig) +
+      '</td><td class="ded">-' + f0(c.totDed) + '</td><td class="pay">' + f2(c.totNet) + '</td><td>' + c.pctTxt + '</td></tr>';
   });
   $('cmp').innerHTML = h + '</tbody>';
 }
@@ -394,11 +434,30 @@ function renderPlans() {
 
 function renderHead() {
   $('ver').textContent = '目前規則：' + (R.version || '未命名');
-  $('chk').textContent = checkPrepay();
   const keys = Object.keys(R.fx || { 'US$': 1 });
   if (!keys.includes(cur)) cur = keys[0];
   $('cur').innerHTML = keys.map(k => '<option' + (k === cur ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
   $('rulesTxt').value = JSON.stringify(R, null, 1);
+}
+
+// ---------- 複製 ----------
+function done(b, pr, old) {
+  pr.then(() => { b.textContent = '已複製 ✓'; setTimeout(() => { b.textContent = old; }, 1500); })
+    .catch(() => alert('未能自動複製，請長按內容手動選取。'));
+}
+function copyTable(i, b) {
+  const c = calc(plans[i]), body = tableRows(c);
+  const tsv = [TH.join('\t')].concat(body.map(r => [r[0], r[1], r[2].join('；'), r[3].join('；'), r[4]].join('\t'))).join('\n');
+  const html = '<table><thead><tr>' + TH.map(x => '<th>' + esc(x) + '</th>').join('') + '</tr></thead><tbody>' +
+    body.map(r => '<tr><td>' + esc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2].map(esc).join('<br>') + '</td><td>' + r[3].map(esc).join('<br>') + '</td><td>' + r[4] + '</td></tr>').join('') + '</tbody></table>';
+  let pr;
+  try {
+    if (navigator.clipboard && window.ClipboardItem)
+      pr = navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([tsv], { type: 'text/plain' }) })]);
+    else if (navigator.clipboard && navigator.clipboard.writeText) pr = navigator.clipboard.writeText(tsv);
+    else pr = Promise.reject();
+  } catch (e) { pr = Promise.reject(); }
+  done(b, pr, '複製表格');
 }
 
 // ---------- 事件 ----------
@@ -424,10 +483,11 @@ $('plans').addEventListener('change', ev => {
 $('plans').addEventListener('click', ev => {
   const b = ev.target.closest('[data-act]'); if (!b) return;
   const i = +b.dataset.i, act = b.dataset.act;
+  if (act === 'cpt') { copyTable(i, b); return; }
   if (act === 'cp') {
     const txt = plans[i].name + '\n' + calc(plans[i]).summary;
     const pr = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(txt) : Promise.reject();
-    pr.then(() => { b.textContent = '已複製'; }).catch(() => alert('未能自動複製，請長按摘要文字手動選取。'));
+    done(b, pr, '複製文字');
     return;
   }
   if (act === 'del') plans.splice(i, 1);
@@ -470,13 +530,15 @@ $('rulesFile').addEventListener('change', async ev => {
 // ---------- 匯出 Excel ----------
 $('exp').addEventListener('click', () => {
   const wb = XLSX.utils.book_new();
-  const cmp = [['方案', '產品', '繳付期', '保費金額', '總原保費', '總優惠', '實繳總額', '貨幣']];
+  const cmp = [['方案', '產品', '繳付期', '保費金額', '總原保費', '總優惠', '實繳總額', '總優惠百分比', '貨幣']];
   const sheets = [];
   plans.forEach((p, i) => {
     const c = calc(p);
-    cmp.push([p.name, c.prod.name, c.t.term + (c.pre ? '（預繳' + c.pre.n + '年）' : ''), c.P, r2(c.totOrig), -c.totDed, r2(c.totNet), cur]);
-    const aoa = [[p.name], ['產品', c.prod.name + '（' + c.t.term + '）'], ['保費金額', c.P], ['貨幣', cur], ['優惠規則', R.version || '']];
-    if (c.pre) aoa.push(['預繳', '預繳' + c.pre.n + '年，保證年利率 ' + c.pre.rate + '%，投保時繳付保費 ' + f0(c.pre.upfront)]);
+    cmp.push([p.name, c.prod.name, c.t.term + (c.pre ? '（預繳' + c.pre.n + '年）' : ''), c.P, r2(c.totOrig), -c.totDed, r2(c.totNet), c.pctTxt, cur]);
+    const aoa = [[p.name], ['產品', c.prod.name + '（' + c.t.term + '）'], ['保費金額', c.P], ['貨幣', cur], ['優惠規則', R.version || ''],
+      [c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt], ['配搭指定產品額外優惠', c.ext + c.unit, c.extAmt], ['其他優惠', c.oP + '%', c.otherAmt]];
+    if (c.pre) aoa.push(['預繳優惠利息', '預繳' + c.pre.n + '年，保證年利率 ' + c.pre.rate + '%，投保時繳付保費 ' + f0(c.pre.upfront), c.pre.tot]);
+    aoa.push(['總優惠金額', c.pctTxt, c.totDed]);
     aoa.push([]);
     aoa.push(['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額', '實繳保費']);
     c.disp.forEach(r => aoa.push([r.label, r2(r.orig), r.items.map(x => x.label + ' -' + f0(x.amt)).join('；') || '/', -r.ded, r2(r.net)]));
@@ -487,7 +549,7 @@ $('exp').addEventListener('click', () => {
     sheets.push([ws, '方案' + (i + 1)]);
   });
   const ws0 = XLSX.utils.aoa_to_sheet(cmp);
-  ws0['!cols'] = [{ wch: 18 }, { wch: 40 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 6 }];
+  ws0['!cols'] = [{ wch: 18 }, { wch: 40 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 6 }];
   XLSX.utils.book_append_sheet(wb, ws0, '方案比較');
   sheets.forEach(s => XLSX.utils.book_append_sheet(wb, s[0], s[1]));
   XLSX.writeFile(wb, '保費優惠計算.xlsx');
