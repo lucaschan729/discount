@@ -1,739 +1,800 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>保費優惠計算器</title>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-<style>
-  :root{--navy:#0f172a;--navy2:#1e293b;--gold:#d97706;--gold2:#f59e0b;--soft:#fffbeb;--line:#e2e8f0;--mut:#64748b;--bg:#f1f5f9;--red:#dc2626}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--navy);-webkit-font-smoothing:antialiased}
-  header{background:radial-gradient(circle at 85% 0%,#334155 0%,transparent 55%),linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:40px 20px 70px}
-  .hd{max-width:1100px;margin:0 auto}
-  .eyebrow{display:inline-block;font-size:12px;letter-spacing:2px;color:var(--gold2);border:1px solid rgba(245,158,11,.5);border-radius:999px;padding:4px 12px;margin-bottom:14px}
-  header h1{margin:0 0 8px;font-size:30px;letter-spacing:1px}
-  header p{margin:0;color:#cbd5e1;font-size:13px}
-  main{max-width:1100px;margin:-44px auto 0;padding:0 16px 20px}
-  section{background:#fff;border-radius:18px;padding:22px;margin-bottom:20px;box-shadow:0 10px 30px rgba(15,23,42,.07);border:1px solid rgba(226,232,240,.8)}
-  section.plan{border-top:4px solid var(--gold2)}
-  h2{margin:0 0 14px;font-size:18px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
-  label{font-size:12px;color:var(--mut);font-weight:600}
-  .grid label{display:block;margin-bottom:5px}
-  input[type=text],select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;background:#f8fafc;color:var(--navy);transition:.15s}
-  input[type=text]:focus,select:focus,textarea:focus{outline:0;border-color:var(--gold2);background:#fff;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
-  input.pname{font-size:20px;font-weight:800;color:var(--navy);flex:1;min-width:160px;background:transparent;border-color:transparent;padding-left:4px}
-  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
-  .btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:0;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(217,119,6,.25)}
-  .btn.alt{background:#fff;color:var(--navy2);border:1px solid var(--line);box-shadow:none}
-  .btn.dark{background:var(--navy);box-shadow:0 4px 12px rgba(15,23,42,.25)}
-  .btn.sm{padding:7px 14px;font-size:13px}
-  .checks{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
-  .checks label{font-size:13px;color:var(--navy2);font-weight:500;background:#f8fafc;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
-  .checks input{accent-color:#d97706;margin-right:4px}
-  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin:16px 0}
-  .card{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-  .card small{color:var(--mut);font-size:12px;font-weight:600}
-  .card b{display:block;font-size:21px;margin-top:6px}
-  .card.hi{background:linear-gradient(135deg,#0f172a,#1e293b);border-color:transparent}
-  .card.hi small{color:#cbd5e1}
-  .card.hi b{color:var(--gold2)}
-  .bd{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:16px 0}
-  .bd-h{background:#f8fafc;padding:10px 16px;font-size:13px;font-weight:700;color:var(--mut);border-bottom:1px solid var(--line)}
-  .bdt{width:100%;border-collapse:collapse}
-  .bdt td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
-  .bdt td:first-child{padding-left:16px}
-  .bdt td:last-child{padding-right:16px}
-  .bdt tr:last-child td{border-bottom:0}
-  .bdt td.bname{width:45%;font-size:14px;font-weight:600;text-align:left}
-  .bdt td.bt{width:30%;text-align:center}
-  .bdt td.bamt{width:25%;text-align:right;white-space:nowrap;font-size:16px;font-weight:800}
-  .btag{display:inline-block;font-size:12px;font-weight:700;color:#92400e;background:#fef3c7;border-radius:999px;padding:3px 10px}
-  .bdt tr.btot td{background:var(--soft)}
-  .bdt tr.btot td.bamt{color:var(--gold);font-size:19px}
-  .tip{background:var(--soft);border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
-  .warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
-  .th-bar{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px}
-  .th-bar b{font-size:15px}
-  .scroll{overflow:auto;border:1px solid var(--line);border-radius:14px}
-  .tbl{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;font-size:14px}
-  .tbl th{background:var(--navy2);color:#fff;padding:13px 10px;text-align:center;font-weight:600;line-height:1.5}
-  .tbl td{padding:13px 10px;text-align:center;vertical-align:middle;border-bottom:1px solid var(--line);line-height:1.7}
-  .tbl tbody tr:nth-child(even) td{background:#f8fafc}
-  .tbl tbody tr td.yr{font-weight:700}
-  .tbl tbody tr td.ded{color:var(--red);font-weight:600}
-  .tbl tbody tr td.pay{background:#fff7ed;color:#9a3412;font-weight:800}
-  .tbl tbody tr.tot td{background:#fef3c7;font-weight:800;border-top:2px solid var(--gold2);border-bottom:0}
-  .note{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.7}
-  .sumbox{margin-top:18px;background:#f8fafc;border:1px solid var(--line);border-left:4px solid var(--gold2);border-radius:12px;padding:14px 16px}
-  .sumbox .bar{margin-bottom:6px;justify-content:space-between}
-  .sumtxt{white-space:pre-wrap;font-size:14px;line-height:1.9}
-  summary{cursor:pointer;font-weight:700;font-size:16px}
-  textarea{height:260px;font-family:Menlo,Consolas,monospace;font-size:12px;margin:12px 0}
-  footer{font-size:12px;color:var(--mut);text-align:center;padding:6px 20px 34px}
-</style>
-</head>
-<body>
-<header>
-  <div class="hd">
-    <span class="eyebrow">PREMIUM OFFER CALCULATOR</span>
-    <h1>保費優惠計算器</h1>
-    <p id="ver"></p>
-  </div>
-</header>
-<main>
-  <section>
-    <div class="bar" style="margin:0">
-      <label>貨幣</label>
-      <select id="cur" style="width:110px"></select>
-      <button class="btn" id="addPlan">＋ 新增方案</button>
-      <button class="btn dark" id="exp" style="margin-left:auto">⬇ 匯出 Excel</button>
+  <!DOCTYPE html>
+  <html lang="zh-HK">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>保費優惠計算器</title>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <style>
+    :root{--navy:#0f172a;--navy2:#1e293b;--gold:#d97706;--gold2:#f59e0b;--soft:#fffbeb;--line:#e2e8f0;--mut:#64748b;--bg:#f1f5f9;--red:#dc2626}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--navy);-webkit-font-smoothing:antialiased}
+    header{background:radial-gradient(circle at 85% 0%,#334155 0%,transparent 55%),linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:40px 20px 70px}
+    .hd{max-width:1100px;margin:0 auto}
+    .eyebrow{display:inline-block;font-size:12px;letter-spacing:2px;color:var(--gold2);border:1px solid rgba(245,158,11,.5);border-radius:999px;padding:4px 12px;margin-bottom:14px}
+    header h1{margin:0 0 8px;font-size:30px;letter-spacing:1px}
+    header p{margin:0;color:#cbd5e1;font-size:13px;line-height:1.8}
+    main{max-width:1100px;margin:-44px auto 0;padding:0 16px 20px}
+    section{background:#fff;border-radius:18px;padding:22px;margin-bottom:20px;box-shadow:0 10px 30px rgba(15,23,42,.07);border:1px solid rgba(226,232,240,.8)}
+    section.plan{border-top:4px solid var(--gold2)}
+    h2{margin:0 0 14px;font-size:18px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+    label{font-size:12px;color:var(--mut);font-weight:600}
+    .grid label{display:block;margin-bottom:5px}
+    input[type=text],select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;background:#f8fafc;color:var(--navy);transition:.15s}
+    input[type=text]:focus,select:focus,textarea:focus{outline:0;border-color:var(--gold2);background:#fff;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+    input.pname{font-size:20px;font-weight:800;color:var(--navy);flex:1;min-width:160px;background:transparent;border-color:transparent;padding-left:4px}
+    .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+    .btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:0;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(217,119,6,.25)}
+    .btn.alt{background:#fff;color:var(--navy2);border:1px solid var(--line);box-shadow:none}
+    .btn.dark{background:var(--navy);box-shadow:0 4px 12px rgba(15,23,42,.25)}
+    .btn.sm{padding:7px 14px;font-size:13px}
+    .checks{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+    .checks label{font-size:13px;color:var(--navy2);font-weight:500;background:#f8fafc;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
+    .checks input{accent-color:#d97706;margin-right:4px}
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin:16px 0}
+    .card{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+    .card small{color:var(--mut);font-size:12px;font-weight:600}
+    .card b{display:block;font-size:21px;margin-top:6px}
+    .card.hi{background:linear-gradient(135deg,#0f172a,#1e293b);border-color:transparent}
+    .card.hi small{color:#cbd5e1}
+    .card.hi b{color:var(--gold2)}
+    .bd{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:16px 0}
+    .bd-h{background:#f8fafc;padding:10px 16px;font-size:13px;font-weight:700;color:var(--mut);border-bottom:1px solid var(--line)}
+    .bdt{width:100%;border-collapse:collapse}
+    .bdt td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+    .bdt td:first-child{padding-left:16px}
+    .bdt td:last-child{padding-right:16px}
+    .bdt tr:last-child td{border-bottom:0}
+    .bdt td.bname{width:45%;font-size:14px;font-weight:600;text-align:left}
+    .bdt td.bt{width:30%;text-align:center}
+    .bdt td.bamt{width:25%;text-align:right;white-space:nowrap;font-size:16px;font-weight:800}
+    .btag{display:inline-block;font-size:12px;font-weight:700;color:#92400e;background:#fef3c7;border-radius:999px;padding:3px 10px}
+    .bdt tr.btot td{background:var(--soft)}
+    .bdt tr.btot td.bamt{color:var(--gold);font-size:19px}
+    .tip{background:var(--soft);border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
+    .warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
+    .th-bar{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px}
+    .th-bar b{font-size:15px}
+    .scroll{overflow:auto;border:1px solid var(--line);border-radius:14px}
+    .tbl{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;font-size:14px}
+    .tbl th{background:var(--navy2);color:#fff;padding:13px 10px;text-align:center;font-weight:600;line-height:1.5}
+    .tbl td{padding:13px 10px;text-align:center;vertical-align:middle;border-bottom:1px solid var(--line);line-height:1.7}
+    .tbl tbody tr:nth-child(even) td{background:#f8fafc}
+    .tbl tbody tr td.yr{font-weight:700}
+    .tbl tbody tr td.ded{color:var(--red);font-weight:600}
+    .tbl tbody tr td.pay{background:#fff7ed;color:#9a3412;font-weight:800}
+    .tbl tbody tr.tot td{background:#fef3c7;font-weight:800;border-top:2px solid var(--gold2);border-bottom:0}
+    .note{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.7}
+    .sumbox{margin-top:18px;background:#f8fafc;border:1px solid var(--line);border-left:4px solid var(--gold2);border-radius:12px;padding:14px 16px}
+    .sumbox .bar{margin-bottom:6px;justify-content:space-between}
+    .sumtxt{white-space:pre-wrap;font-size:14px;line-height:1.9}
+    summary{cursor:pointer;font-weight:700;font-size:16px}
+    textarea{height:260px;font-family:Menlo,Consolas,monospace;font-size:12px;margin:12px 0}
+    footer{font-size:12px;color:var(--mut);text-align:center;padding:6px 20px 34px}
+  </style>
+  </head>
+  <body>
+  <header>
+    <div class="hd">
+      <span class="eyebrow">PREMIUM OFFER CALCULATOR</span>
+      <h1>保費優惠計算器</h1>
+      <p id="ver"></p>
     </div>
-  </section>
-
-  <div id="plans"></div>
-
-  <section>
-    <h2>方案比較</h2>
-    <div class="scroll"><table id="cmp" class="tbl"></table></div>
-  </section>
-
-  <section>
-    <details>
-      <summary>⚙️ 優惠規則（每期更新）</summary>
-      <p style="font-size:13px;color:#64748b">修改或貼上新規則後按「套用」即時生效（只限本次開啟）。要永久更新，請把內容存成 <b>rules.json</b> 放到 GitHub 同一資料夾。</p>
-      <textarea id="rulesTxt" spellcheck="false"></textarea>
+  </header>
+  <main>
+    <section>
+      <div id="loadMsg" class="warn" style="display:none"></div>
       <div class="bar" style="margin:0">
-        <button class="btn sm" id="applyRules">套用</button>
-        <button class="btn alt sm" id="resetRules">還原內置規則</button>
-        <button class="btn alt sm" id="dlRules">下載 rules.json</button>
-        <input type="file" id="rulesFile" accept=".json" style="display:none">
-        <button class="btn alt sm" id="upRules">匯入規則檔</button>
-        <span id="rulesMsg" style="font-size:13px;color:#b45309"></span>
+        <label>貨幣</label>
+        <select id="cur" style="width:110px"></select>
+        <button class="btn" id="addPlan">＋ 新增方案</button>
+        <button class="btn dark" id="exp" style="margin-left:auto">⬇ 匯出 Excel</button>
       </div>
-    </details>
-  </section>
-</main>
-<footer>本工具只供參考，優惠以保險公司最新公佈的條款及細則和最終批核為準。</footer>
+    </section>
 
-<script>
-const $ = id => document.getElementById(id);
-const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const num = s => { const v = parseFloat(String(s == null ? '' : s).replace(/[,\s$]/g, '')); return isNaN(v) ? 0 : v; };
-const f0 = v => Math.round(v).toLocaleString('en-US');
-const f2 = v => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const r2 = v => Math.round(v * 100) / 100;
-const fl = v => Math.floor(v + 1e-6);
-const CUR_NAME = { 'US$': '美元', 'HK$': '港元' };
-const NUMS = '一二三四五六七八九十';
-const TH = ['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額（整數）', '實繳保費'];
-const DISCLAIMER = '本文件只供參考，優惠以保險公司最新公佈的條款及細則和最終批核為準。';
+    <div id="plans"></div>
 
-// ---------- 內置優惠規則（AIA 2026年第四季單張）----------
-// tiers: [最低年度化保費(美元), 基本優惠]；unit: "%" 或 "m"(個月)
-// sched.mode: once=首個保單週年後一次過；equal=分 n 年平均；steps=按月數分年；upfront=投保時折扣
-const SAV = [[0,5],[10000,15],[30000,20],[50000,23],[100000,26],[200000,28],[1000000,30]];
-const SP = [[100000,2],[300000,3],[600000,4],[1000000,5],[2000000,6],[3500000,7]];
-const CI_EX = [{ label: '已配搭指定儲蓄保險計劃', add: 3 }, { label: '已配搭指定醫療保險計劃', add: 2 }];
-const CI_XP = { baseAdd: 5, extras: [7, 5], cap: 22, steps: [6, 7] };
-const ciTerm = (term, years, a, b, xp) => {
-  const t = { term, years, unit: 'm', tiers: [[0,4],[a,4.5],[b,5]], extras: CI_EX, cap: 10, sched: { mode: 'steps', steps: [2, 3] }, end: '2026-12-31' };
-  if (xp) t.xp = CI_XP;
-  return t;
-};
-const lifeEx = [{ label: '已配搭指定危疾（投保額達5萬美元）', add: 5 }, { label: '已配搭環宇盈活／財富盈活（年保費達5萬美元）', add: 5 }];
+    <section>
+      <h2>方案比較</h2>
+      <div class="scroll"><table id="cmp" class="tbl"></table></div>
+    </section>
 
-const DEFAULT_RULES = {
-  version: 'AIA 同心友您推廣活動（2026年第四季）＋預繳保費保證優惠息率（2026年11月）',
-  fx: { 'US$': 1, 'HK$': 7.5 },
-  levy: { rate: 0.001, cap: { 'US$': 12.84, 'HK$': 100 } },
-  // 預繳保費保證優惠息率：options 的 n = 預繳保費期；tiers = [最低年繳保費(美元), 保證年利率%]
-  prepay: {
-    end: '2026-11-30',
-    products: ['yingyu', 'huanyu', 'caifu'],
-    termYears: 5,
-    currencies: ['US$'],
-    options: [ { n: 1, tiers: [[0, 4.8]] }, { n: 4, tiers: [[0, 4.3], [200000, 4.5]] } ]
-  },
-  products: [
-    { id: 'yingyu', name: '儲蓄 - 盈御多元貨幣儲蓄保險計劃3', terms: [
-      { term: '5年', years: 5, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
-      { term: '10年', years: 10, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
-      { term: '一次性繳付', years: 1, unit: '%', tiers: SP, sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
-    { id: 'huanyu', name: '儲蓄 - 環宇盈活儲蓄保險計劃', terms: [
-      { term: '5年', years: 5, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／活然人生／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
-      { term: '一次性繳付', years: 1, unit: '%', tiers: SP, sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
-    { id: 'caifu', name: '儲蓄 - 財富盈活儲蓄保險計劃', terms: [
-      { term: '5年', years: 5, unit: '%', tiers: [[50000,21],[100000,24],[200000,26],[1000000,28]], extras: [{ label: '已配搭指定危疾／活然人生／優悅年金', add: 3 }], cap: 31, sched: { mode: 'once' }, end: '2026-11-30' },
-      { term: '一次性繳付', years: 1, unit: '%', tiers: [[500000,3],[600000,4],[1000000,5],[2000000,6],[3500000,7]], sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
-    { id: 'jianai', name: '儲蓄 - 「簡愛‧延續」儲蓄保險計劃5', terms: [
-      { term: '5年', years: 5, unit: '%', tiers: [[0,5],[10000,6],[30000,7],[50000,8],[100000,10]], sched: { mode: 'once' }, end: '2026-11-30' },
-      { term: '10年', years: 10, unit: '%', tiers: [[0,5],[10000,6],[30000,7],[50000,8],[100000,10]], sched: { mode: 'once' }, end: '2026-11-30' },
-      { term: '一次性繳付', years: 1, unit: '%', tiers: [[100000,1],[300000,2],[600000,3],[1000000,4]], sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
-    { id: 'huoran', name: '人壽 - 「活然人生」保險計劃', terms: [
-      { term: '5年', years: 5, unit: '%', tiers: [[0,20],[25000,25],[45000,30]], extras: lifeEx, cap: 40, sched: { mode: 'equal', n: 4 }, end: '2026-12-31' },
-      { term: '30年', years: 30, unit: '%', tiers: [[0,20],[6000,25],[10000,30]], extras: lifeEx, cap: 40, sched: { mode: 'equal', n: 4 }, end: '2026-12-31' } ] },
-    { id: 'aibanhang', name: '危疾 - 「愛伴航」保險計劃2系列', terms: [
-      ciTerm('10年', 10, 8000, 16000, true), ciTerm('18年', 18, 5000, 10000, true), ciTerm('25年', 25, 4000, 8000, true) ] },
-    { id: 'jianzhi', name: '危疾 - 「簡緻‧愛伴航」保險計劃', terms: [
-      ciTerm('10年', 10, 8000, 16000, false), ciTerm('18年', 18, 5000, 10000, false), ciTerm('25年', 25, 4000, 8000, false) ] },
-    { id: 'medical', name: '醫療 - 指定醫療保障（自願醫保／尊耀／睿選）', terms: [
-      { term: '每年續保', years: 0, unit: 'm', tiers: [[0,7]], extras: [{ label: '已配搭指定保險計劃', add: 2 }], cap: 9, sched: { mode: 'steps', steps: [3, 3] }, end: '2026-12-31' } ] },
-    { id: 'protect', name: '保障 - 指定危疾／意外／定期壽險（3個月回贈）', terms: [
-      { term: '按計劃', years: 0, unit: 'm', tiers: [[0,3]], sched: { mode: 'steps', steps: [2, 1] }, end: '2026-12-31' } ] }
-  ]
-};
+    <section>
+      <details>
+        <summary>⚙️ 優惠規則（每期更新）</summary>
+        <p style="font-size:13px;color:#64748b">修改或貼上新規則後按「套用」即時生效（只限本次開啟）。要永久更新，請更換 GitHub 同一資料夾內的 <b>rebate.json</b>（保費回贈）和 <b>prepay.json</b>（預繳優惠）。</p>
+        <textarea id="rulesTxt" spellcheck="false"></textarea>
+        <div class="bar" style="margin:0">
+          <button class="btn sm" id="applyRules">套用</button>
+          <button class="btn alt sm" id="resetRules">還原內置規則</button>
+          <button class="btn alt sm" id="dlRebate">下載 rebate.json</button>
+          <button class="btn alt sm" id="dlPrepay">下載 prepay.json</button>
+          <input type="file" id="rulesFile" accept=".json" style="display:none">
+          <button class="btn alt sm" id="upRules">匯入規則檔</button>
+          <span id="rulesMsg" style="font-size:13px;color:#b45309"></span>
+        </div>
+      </details>
+    </section>
+  </main>
+  <footer>本工具只供參考，優惠以保險公司最新公佈的條款及細則和最終批核為準。</footer>
 
-let R = JSON.parse(JSON.stringify(DEFAULT_RULES));
-let cur = 'US$';
-let plans = [];
+  <script>
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const num = s => { const v = parseFloat(String(s == null ? '' : s).replace(/[,\s$]/g, '')); return isNaN(v) ? 0 : v; };
+  const f0 = v => Math.round(v).toLocaleString('en-US');
+  const f2 = v => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const r2 = v => Math.round(v * 100) / 100;
+  const fl = v => Math.floor(v + 1e-6);
+  const CUR_NAME = { 'US$': '美元', 'HK$': '港元' };
+  const NUMS = '一二三四五六七八九十';
+  const TH = ['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額（整數）', '實繳保費'];
+  const DISCLAIMER = '本文件只供參考，優惠以保險公司最新公佈的條款及細則和最終批核為準。';
 
-function newPlan(o) {
-  return Object.assign({ name: '方案' + (plans.length + 1), pid: R.products[0].id, ti: 0, prem: '', levy: '', coupon: '',
-    oName: '其他優惠', oPct: '', ex: [], xp: false, prepay: false, preN: 4, preR: '' }, o || {});
-}
-const getProd = p => R.products.find(x => x.id === p.pid) || R.products[0];
-const getTerm = p => { const pr = getProd(p); return pr.terms[p.ti] || pr.terms[0]; };
-const isPast = d => new Date() > new Date(d + 'T23:59:59');
-
-function yrTxt(ys) {
-  const a = Math.min.apply(null, ys), b = Math.max.apply(null, ys);
-  if (a === b) return a === 1 ? '投保時扣減' : '第' + a + '年繳費時扣減';
-  return '第' + a + '至' + b + '年繳費時分期扣減';
-}
-
-// ---------- 預繳保費 ----------
-function prepayOK(p) {
-  const pp = R.prepay;
-  if (!pp || !Array.isArray(pp.options) || !pp.options.length) return false;
-  if (pp.products && !pp.products.includes(getProd(p).id)) return false;
-  if (getTerm(p).years !== (pp.termYears || 5)) return false;
-  if (pp.currencies && !pp.currencies.includes(cur)) return false;
-  return true;
-}
-function prepayOpt(p) { const o = R.prepay.options; return o.find(x => x.n === +p.preN) || o[o.length - 1]; }
-function tierRate(tiers, usd) { let r = 0; tiers.forEach(x => { if (usd >= x[0]) r = x[1]; }); return r; }
-// 單張算法：每年利息 = 戶口內預繳結餘 × 年利率；結餘 = 上年結餘 + 利息 − 已到期保費（不取整）
-function prepayInterest(P, n, rate) {
-  const a = []; let B = P * n;
-  for (let k = 0; k < n; k++) { const I = B * rate / 100; a.push(I); B = B + I - P; }
-  return a;
-}
-
-// ---------- 計算 ----------
-function calc(p) {
-  const prod = getProd(p), t = getTerm(p);
-  const P = num(p.prem), fx = R.fx[cur] || 1, usd = P / fx;
-  const unit = t.unit === 'm' ? '個月' : '%';
-  const useX = !!(t.xp && p.xp);
-  let ti = -1;
-  if (P > 0) t.tiers.forEach((x, i) => { if (usd >= x[0]) ti = i; });
-  let base = 0, ext = 0;
-  if (ti >= 0) {
-    base = t.tiers[ti][1] + (useX ? t.xp.baseAdd : 0);
-    (t.extras || []).forEach((e, j) => { if (p.ex[j]) ext += useX ? t.xp.extras[j] : e.add; });
-  }
-  const cap = useX ? t.xp.cap : t.cap;
-  let total = base + ext;
-  if (cap && total > cap) total = cap;
-  ext = total - base;
-
-  const lifelong = !t.years, years = t.years || 5;
-  const levy = String(p.levy).trim() !== '' ? num(p.levy) : Math.min(P * R.levy.rate, (R.levy.cap[cur] || 0));
-  const rows = [], sum = [];
-  for (let y = 1; y <= years; y++) rows.push({ y, orig: P + levy, items: [] });
-  // g = 摘要內的分組名稱；pre = 預繳優惠；回傳實際加入的金額
-  const add = (y, label, amt, g, pre) => {
-    amt = Math.round(amt);
-    if (y > years || amt <= 0) return 0;
-    rows[y - 1].items.push({ label, amt });
-    g = g || label;
-    let s0 = sum.find(x => x.g === g);
-    if (!s0) { s0 = { g, amt: 0, ys: [], pre: !!pre }; sum.push(s0); }
-    s0.amt += amt;
-    if (!s0.ys.includes(y)) s0.ys.push(y);
-    return amt;
+  // ---------- 內置優惠規則（後備；正常情況由 rebate.json 及 prepay.json 取代）----------
+  // tiers: [最低年度化保費(美元), 基本優惠]；unit: "%" 或 "m"(個月)
+  // sched.mode: once=首個保單週年後一次過；equal=分 n 年平均；steps=按月數分年；upfront=投保時折扣
+  const SAV = [[0,5],[10000,15],[30000,20],[50000,23],[100000,26],[200000,28],[1000000,30]];
+  const SP = [[100000,2],[300000,3],[600000,4],[1000000,5],[2000000,6],[3500000,7]];
+  const CI_EX = [{ label: '已配搭指定儲蓄保險計劃', add: 3 }, { label: '已配搭指定醫療保險計劃', add: 2 }];
+  const CI_XP = { baseAdd: 5, extras: [7, 5], cap: 22, steps: [6, 7] };
+  const ciTerm = (term, years, a, b, xp) => {
+    const t = { term, years, unit: 'm', tiers: [[0,4],[a,4.5],[b,5]], extras: CI_EX, cap: 10, sched: { mode: 'steps', steps: [2, 3] }, end: '2026-12-31' };
+    if (xp) t.xp = CI_XP;
+    return t;
   };
-  const val = x => t.unit === 'm' ? P / 12 * x : P * x / 100;
-  const s = t.sched || { mode: 'once' };
+  const lifeEx = [{ label: '已配搭指定危疾（投保額達5萬美元）', add: 5 }, { label: '已配搭環宇盈活／財富盈活（年保費達5萬美元）', add: 5 }];
 
-  const couponAmt = add(1, '電子保費現金券', num(p.coupon));
-  let rb = 0;
-  if (s.mode === 'upfront') rb += add(1, '保費折扣（' + total + '%）', val(total));
-  else if (s.mode === 'once') {
-    rb += add(2, '基本保費回贈（' + base + unit + '）', val(base));
-    rb += add(2, '配搭指定產品額外優惠（' + ext + unit + '）', val(ext));
-  } else if (s.mode === 'equal') {
-    for (let k = 0; k < s.n; k++) rb += add(k + 2, '保費回贈優惠（共' + total + unit + '，分' + s.n + '年）', val(total) / s.n);
-  } else if (s.mode === 'steps') {
-    const st = useX ? t.xp.steps : s.steps;
-    const g = '保費回贈優惠（共' + total + unit + '）';
-    let rem = total;
-    st.forEach((m, k) => { const q = Math.min(m, rem); rb += add(k + 2, '保費回贈（' + q + unit + '）', val(q), g); rem -= q; });
-    rb += add(st.length + 2, '保費回贈（' + rem + unit + '）', val(rem), g);
+  const DEFAULT_RULES = {
+    version: 'AIA 同心友您推廣活動（2026年第四季）',
+    fx: { 'US$': 1, 'HK$': 7.5 },
+    levy: { rate: 0.001, cap: { 'US$': 12.84, 'HK$': 100 } },
+    // 預繳保費保證優惠息率：options 的 n = 預繳保費期；tiers = [最低年繳保費(美元), 保證年利率%]
+    prepay: {
+      version: '預繳保費保證優惠息率（2026年11月）',
+      end: '2026-11-30',
+      products: ['yingyu', 'huanyu', 'caifu'],
+      termYears: 5,
+      currencies: ['US$'],
+      options: [ { n: 1, tiers: [[0, 4.8]] }, { n: 4, tiers: [[0, 4.3], [200000, 4.5]] } ]
+    },
+    products: [
+      { id: 'yingyu', name: '儲蓄 - 盈御多元貨幣儲蓄保險計劃3', terms: [
+        { term: '5年', years: 5, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
+        { term: '10年', years: 10, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
+        { term: '一次性繳付', years: 1, unit: '%', tiers: SP, sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
+      { id: 'huanyu', name: '儲蓄 - 環宇盈活儲蓄保險計劃', terms: [
+        { term: '5年', years: 5, unit: '%', tiers: SAV, extras: [{ label: '已配搭指定危疾／活然人生／優悅年金', add: 3 }], cap: 33, sched: { mode: 'once' }, end: '2026-11-30' },
+        { term: '一次性繳付', years: 1, unit: '%', tiers: SP, sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
+      { id: 'caifu', name: '儲蓄 - 財富盈活儲蓄保險計劃', terms: [
+        { term: '5年', years: 5, unit: '%', tiers: [[50000,21],[100000,24],[200000,26],[1000000,28]], extras: [{ label: '已配搭指定危疾／活然人生／優悅年金', add: 3 }], cap: 31, sched: { mode: 'once' }, end: '2026-11-30' },
+        { term: '一次性繳付', years: 1, unit: '%', tiers: [[500000,3],[600000,4],[1000000,5],[2000000,6],[3500000,7]], sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
+      { id: 'jianai', name: '儲蓄 - 「簡愛‧延續」儲蓄保險計劃5', terms: [
+        { term: '5年', years: 5, unit: '%', tiers: [[0,5],[10000,6],[30000,7],[50000,8],[100000,10]], sched: { mode: 'once' }, end: '2026-11-30' },
+        { term: '10年', years: 10, unit: '%', tiers: [[0,5],[10000,6],[30000,7],[50000,8],[100000,10]], sched: { mode: 'once' }, end: '2026-11-30' },
+        { term: '一次性繳付', years: 1, unit: '%', tiers: [[100000,1],[300000,2],[600000,3],[1000000,4]], sched: { mode: 'upfront' }, end: '2026-11-30' } ] },
+      { id: 'huoran', name: '人壽 - 「活然人生」保險計劃', terms: [
+        { term: '5年', years: 5, unit: '%', tiers: [[0,20],[25000,25],[45000,30]], extras: lifeEx, cap: 40, sched: { mode: 'equal', n: 4 }, end: '2026-12-31' },
+        { term: '30年', years: 30, unit: '%', tiers: [[0,20],[6000,25],[10000,30]], extras: lifeEx, cap: 40, sched: { mode: 'equal', n: 4 }, end: '2026-12-31' } ] },
+      { id: 'aibanhang', name: '危疾 - 「愛伴航」保險計劃2系列', terms: [
+        ciTerm('10年', 10, 8000, 16000, true), ciTerm('18年', 18, 5000, 10000, true), ciTerm('25年', 25, 4000, 8000, true) ] },
+      { id: 'jianzhi', name: '危疾 - 「簡緻‧愛伴航」保險計劃', terms: [
+        ciTerm('10年', 10, 8000, 16000, false), ciTerm('18年', 18, 5000, 10000, false), ciTerm('25年', 25, 4000, 8000, false) ] },
+      { id: 'medical', name: '醫療 - 指定醫療保障（自願醫保／尊耀／睿選）', terms: [
+        { term: '每年續保', years: 0, unit: 'm', tiers: [[0,7]], extras: [{ label: '已配搭指定保險計劃', add: 2 }], cap: 9, sched: { mode: 'steps', steps: [3, 3] }, end: '2026-12-31' } ] },
+      { id: 'protect', name: '保障 - 指定危疾／意外／定期壽險（3個月回贈）', terms: [
+        { term: '按計劃', years: 0, unit: 'm', tiers: [[0,3]], sched: { mode: 'steps', steps: [2, 1] }, end: '2026-12-31' } ] }
+    ]
+  };
+
+  let R = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  let SRC = { rebate: '內置', prepay: '內置' };
+  let cur = 'US$';
+  let plans = [];
+  const verTxt = () => (R.version || '') + (R.prepay && R.prepay.version ? '＋' + R.prepay.version : '');
+
+  function newPlan(o) {
+    return Object.assign({ name: '方案' + (plans.length + 1), pid: R.products[0].id, ti: 0, prem: '', levy: '', coupon: '',
+      oName: '其他優惠', oPct: '', ex: [], xp: false, prepay: false, preN: 4, preR: '' }, o || {});
   }
-  let baseAmt = rb, extAmt = 0;
-  if (ext > 0) { baseAmt = Math.min(rb, Math.round(val(base))); extAmt = rb - baseAmt; }
-  const oP = num(p.oPct);
-  const otherAmt = add(s.mode === 'upfront' ? 1 : 2, (p.oName || '其他優惠') + '（' + oP + '%）', P * oP / 100);
+  const getProd = p => R.products.find(x => x.id === p.pid) || R.products[0];
+  const getTerm = p => { const pr = getProd(p); return pr.terms[p.ti] || pr.terms[0]; };
+  const isPast = d => new Date() > new Date(d + 'T23:59:59');
 
-  // 預繳保費優惠利息（各年向下取整；總額按未取整利息相加後向下取整，與單張例子一致）
-  let pre = null;
-  if (p.prepay && prepayOK(p) && P > 0) {
-    const o = prepayOpt(p), manual = String(p.preR).trim() !== '';
-    const rate = manual ? num(p.preR) : tierRate(o.tiers, usd);
-    const arr = prepayInterest(P, o.n, rate);
-    const exact = arr.reduce((a, b) => a + b, 0), tot = fl(exact);
-    const g = '預繳保費優惠（一次繳付' + (o.n + 1) + '年保費，保證年利率' + rate + '%）';
-    let dsum = 0;
-    arr.forEach((I, k) => { const d = fl(I); dsum += d; add(k + 2, '預繳優惠利息（' + rate + '%）', d, g, true); });
-    pre = { n: o.n, rate, tot, adj: tot - dsum, pct: Math.floor(exact / P * 1000 + 1e-9) / 10, upfront: P * (o.n + 1), manual, opt: o };
-    const sg = sum.find(x => x.pre); if (sg) sg.amt += pre.adj;
+  function yrTxt(ys) {
+    const a = Math.min.apply(null, ys), b = Math.max.apply(null, ys);
+    if (a === b) return a === 1 ? '投保時扣減' : '第' + a + '年繳費時扣減';
+    return '第' + a + '至' + b + '年繳費時分期扣減';
   }
 
-  let totOrig = 0, totDed = 0, last = 0;
-  rows.forEach(r => {
-    r.ded = r.items.reduce((a, b) => a + b.amt, 0);
-    r.net = r.orig - r.ded; r.label = '第 ' + r.y + ' 年';
-    totOrig += r.orig; totDed += r.ded;
-    if (r.items.length) last = r.y;
-  });
-  if (pre) totDed += pre.adj;
-  // 年期較長時，把沒有優惠的尾段年份合併顯示
-  let disp = rows;
-  const keep = Math.max(5, last);
-  if (years - keep >= 2) {
-    const tail = rows.slice(keep);
-    disp = rows.slice(0, keep);
-    disp.push({ label: '第 ' + (keep + 1) + '–' + years + ' 年（每年 ' + f2(P + levy) + '）', orig: tail.reduce((a, b) => a + b.orig, 0), items: [], ded: 0, net: tail.reduce((a, b) => a + b.net, 0) });
+  // ---------- 預繳保費 ----------
+  function prepayOK(p) {
+    const pp = R.prepay;
+    if (!pp || !Array.isArray(pp.options) || !pp.options.length) return false;
+    if (pp.products && !pp.products.includes(getProd(p).id)) return false;
+    if (getTerm(p).years !== (pp.termYears || 5)) return false;
+    if (pp.currencies && !pp.currencies.includes(cur)) return false;
+    return true;
+  }
+  function prepayOpt(p) { const o = R.prepay.options; return o.find(x => x.n === +p.preN) || o[o.length - 1]; }
+  function tierRate(tiers, usd) { let r = 0; tiers.forEach(x => { if (usd >= x[0]) r = x[1]; }); return r; }
+  // 單張算法：每年利息 = 戶口內預繳結餘 × 年利率；結餘 = 上年結餘 + 利息 − 已到期保費（不取整）
+  function prepayInterest(P, n, rate) {
+    const a = []; let B = P * n;
+    for (let k = 0; k < n; k++) { const I = B * rate / 100; a.push(I); B = B + I - P; }
+    return a;
   }
 
-  // 優惠摘要（客戶版格式）
-  const cn = CUR_NAME[cur] || cur;
-  const lines = [];
-  if (sum.length) {
-    if (t.end) { const d = t.end.split('-'); lines.push('【限時優惠｜' + (+d[0]) + '年' + (+d[1]) + '月' + (+d[2]) + '日前投保】'); }
-    sum.forEach((x, k) => {
-      let ln = (NUMS[k] || (k + 1)) + '、' + x.g + ' ';
-      if (x.pre) ln += '折算優惠約 ' + pre.pct.toFixed(1) + '%，即 ' + f0(x.amt) + ' ' + cn;
-      else ln += f0(x.amt) + ' ' + cn + '（' + yrTxt(x.ys) + '）';
-      lines.push(ln);
+  // ---------- 計算 ----------
+  function calc(p) {
+    const prod = getProd(p), t = getTerm(p);
+    const P = num(p.prem), fx = R.fx[cur] || 1, usd = P / fx;
+    const unit = t.unit === 'm' ? '個月' : '%';
+    const useX = !!(t.xp && p.xp);
+    let ti = -1;
+    if (P > 0) t.tiers.forEach((x, i) => { if (usd >= x[0]) ti = i; });
+    let base = 0, ext = 0;
+    if (ti >= 0) {
+      base = t.tiers[ti][1] + (useX ? t.xp.baseAdd : 0);
+      (t.extras || []).forEach((e, j) => { if (p.ex[j]) ext += useX ? t.xp.extras[j] : e.add; });
+    }
+    const cap = useX ? t.xp.cap : t.cap;
+    let total = base + ext;
+    if (cap && total > cap) total = cap;
+    ext = total - base;
+
+    const lifelong = !t.years, years = t.years || 5;
+    const levy = String(p.levy).trim() !== '' ? num(p.levy) : Math.min(P * R.levy.rate, (R.levy.cap[cur] || 0));
+    const rows = [], sum = [];
+    for (let y = 1; y <= years; y++) rows.push({ y, orig: P + levy, items: [] });
+    // g = 摘要內的分組名稱；pre = 預繳優惠；回傳實際加入的金額
+    const add = (y, label, amt, g, pre) => {
+      amt = Math.round(amt);
+      if (y > years || amt <= 0) return 0;
+      rows[y - 1].items.push({ label, amt });
+      g = g || label;
+      let s0 = sum.find(x => x.g === g);
+      if (!s0) { s0 = { g, amt: 0, ys: [], pre: !!pre }; sum.push(s0); }
+      s0.amt += amt;
+      if (!s0.ys.includes(y)) s0.ys.push(y);
+      return amt;
+    };
+    const val = x => t.unit === 'm' ? P / 12 * x : P * x / 100;
+    const s = t.sched || { mode: 'once' };
+
+    const couponAmt = add(1, '電子保費現金券', num(p.coupon));
+    let rb = 0;
+    if (s.mode === 'upfront') rb += add(1, '保費折扣（' + total + '%）', val(total));
+    else if (s.mode === 'once') {
+      rb += add(2, '基本保費回贈（' + base + unit + '）', val(base));
+      rb += add(2, '配搭指定產品額外優惠（' + ext + unit + '）', val(ext));
+    } else if (s.mode === 'equal') {
+      for (let k = 0; k < s.n; k++) rb += add(k + 2, '保費回贈優惠（共' + total + unit + '，分' + s.n + '年）', val(total) / s.n);
+    } else if (s.mode === 'steps') {
+      const st = useX ? t.xp.steps : s.steps;
+      const g = '保費回贈優惠（共' + total + unit + '）';
+      let rem = total;
+      st.forEach((m, k) => { const q = Math.min(m, rem); rb += add(k + 2, '保費回贈（' + q + unit + '）', val(q), g); rem -= q; });
+      rb += add(st.length + 2, '保費回贈（' + rem + unit + '）', val(rem), g);
+    }
+    let baseAmt = rb, extAmt = 0;
+    if (ext > 0) { baseAmt = Math.min(rb, Math.round(val(base))); extAmt = rb - baseAmt; }
+    const oP = num(p.oPct);
+    const otherAmt = add(s.mode === 'upfront' ? 1 : 2, (p.oName || '其他優惠') + '（' + oP + '%）', P * oP / 100);
+
+    // 預繳保費優惠利息（各年向下取整；總額按未取整利息相加後向下取整，與單張例子一致）
+    let pre = null;
+    if (p.prepay && prepayOK(p) && P > 0) {
+      const o = prepayOpt(p), manual = String(p.preR).trim() !== '';
+      const rate = manual ? num(p.preR) : tierRate(o.tiers, usd);
+      const arr = prepayInterest(P, o.n, rate);
+      const exact = arr.reduce((a, b) => a + b, 0), tot = fl(exact);
+      const g = '預繳保費優惠（一次繳付' + (o.n + 1) + '年保費，保證年利率' + rate + '%）';
+      let dsum = 0;
+      arr.forEach((I, k) => { const d = fl(I); dsum += d; add(k + 2, '預繳優惠利息（' + rate + '%）', d, g, true); });
+      pre = { n: o.n, rate, tot, adj: tot - dsum, pct: Math.floor(exact / P * 1000 + 1e-9) / 10, upfront: P * (o.n + 1), manual, opt: o };
+      const sg = sum.find(x => x.pre); if (sg) sg.amt += pre.adj;
+    }
+
+    let totOrig = 0, totDed = 0, last = 0;
+    rows.forEach(r => {
+      r.ded = r.items.reduce((a, b) => a + b.amt, 0);
+      r.net = r.orig - r.ded; r.label = '第 ' + r.y + ' 年';
+      totOrig += r.orig; totDed += r.ded;
+      if (r.items.length) last = r.y;
     });
-    lines.push('✅ 優惠合計：' + f0(totDed) + ' ' + cn);
+    if (pre) totDed += pre.adj;
+    // 年期較長時，把沒有優惠的尾段年份合併顯示
+    let disp = rows;
+    const keep = Math.max(5, last);
+    if (years - keep >= 2) {
+      const tail = rows.slice(keep);
+      disp = rows.slice(0, keep);
+      disp.push({ label: '第 ' + (keep + 1) + '–' + years + ' 年（每年 ' + f2(P + levy) + '）', orig: tail.reduce((a, b) => a + b.orig, 0), items: [], ded: 0, net: tail.reduce((a, b) => a + b.net, 0) });
+    }
+
+    // 優惠摘要（客戶版格式）
+    const cn = CUR_NAME[cur] || cur;
+    const lines = [];
+    if (sum.length) {
+      if (t.end) { const d = t.end.split('-'); lines.push('【限時優惠｜' + (+d[0]) + '年' + (+d[1]) + '月' + (+d[2]) + '日前投保】'); }
+      sum.forEach((x, k) => {
+        let ln = (NUMS[k] || (k + 1)) + '、' + x.g + ' ';
+        if (x.pre) ln += '折算優惠約 ' + pre.pct.toFixed(1) + '%，即 ' + f0(x.amt) + ' ' + cn;
+        else ln += f0(x.amt) + ' ' + cn + '（' + yrTxt(x.ys) + '）';
+        lines.push(ln);
+      });
+      lines.push('✅ 優惠合計：' + f0(totDed) + ' ' + cn);
+    }
+
+    const hints = [], warns = [];
+    if (P > 0) {
+      if (ti < 0) hints.push('未達最低保費要求（' + cur + f0(t.tiers[0][0] * fx) + '），沒有基本回贈優惠。');
+      else if (ti < t.tiers.length - 1) {
+        const nx = t.tiers[ti + 1];
+        hints.push('💡 再多 ' + cur + f0(nx[0] * fx - P) + ' 保費，基本回贈可升至 ' + (nx[1] + (useX ? t.xp.baseAdd : 0)) + unit + '。');
+      }
+    }
+    if (pre && !pre.manual) {
+      const nx = pre.opt.tiers.find(x => x[0] > usd);
+      if (nx) hints.push('💡 年繳保費再多 ' + cur + f0(nx[0] * fx - P) + '，預繳保證年利率可升至 ' + nx[1] + '%。');
+    }
+    let period = '';
+    if (t.end) { if (isPast(t.end)) warns.push('保費回贈的推廣期已於 ' + t.end + ' 結束，請更新優惠規則。'); else period = '保費回贈推廣期至 ' + t.end; }
+    if (pre && R.prepay.end) {
+      if (isPast(R.prepay.end)) warns.push('預繳優惠的推廣期已於 ' + R.prepay.end + ' 結束，請更新優惠規則。');
+      else period += (period ? '；' : '') + '預繳優惠推廣期至 ' + R.prepay.end + '（名額有限）';
+    }
+    const pctTxt = P ? (totDed / P * 100).toFixed(2) + '%' : '—';
+
+    return { prod, t, P, levy, unit, base, ext, total, years, lifelong, rows, disp, totOrig, totDed, totNet: totOrig - totDed,
+      baseAmt, extAmt, otherAmt, couponAmt, oP, pctTxt, upfrontMode: s.mode === 'upfront', hints, warns, period, pre, summary: lines.join('\n') };
   }
 
-  const hints = [], warns = [];
-  if (P > 0) {
-    if (ti < 0) hints.push('未達最低保費要求（' + cur + f0(t.tiers[0][0] * fx) + '），沒有基本回贈優惠。');
-    else if (ti < t.tiers.length - 1) {
-      const nx = t.tiers[ti + 1];
-      hints.push('💡 再多 ' + cur + f0(nx[0] * fx - P) + ' 保費，基本回贈可升至 ' + (nx[1] + (useX ? t.xp.baseAdd : 0)) + unit + '。');
+  // 每年實繳保費表格的資料（畫面及複製共用）
+  function tableRows(c) {
+    const body = c.disp.map(r => {
+      const multi = r.items.length > 1;
+      return [r.label, f2(r.orig),
+        r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + x.label) : ['/'],
+        r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + '-' + f0(x.amt)) : ['/'],
+        f2(r.net)];
+    });
+    body.push([c.lifelong ? '首5年合計' : '總計', f2(c.totOrig), [''], ['-' + f0(c.totDed)], f2(c.totNet)]);
+    return body;
+  }
+
+  // ---------- 畫面 ----------
+  function planHtml(p, i) {
+    const prod = getProd(p), t = getTerm(p), canPre = prepayOK(p);
+    const f = (label, k, ph) => '<div><label>' + label + '</label><input type="text" inputmode="decimal" data-i="' + i + '" data-k="' + k + '" value="' + esc(p[k]) + '" placeholder="' + (ph || '') + '"></div>';
+    let h = '<section class="plan"><div class="bar"><input type="text" class="pname" data-i="' + i + '" data-k="name" value="' + esc(p.name) + '">' +
+      '<button class="btn alt sm" data-act="copy" data-i="' + i + '">複製方案</button><button class="btn alt sm" data-act="del" data-i="' + i + '">刪除</button></div><div class="grid">';
+    h += '<div><label>產品</label><select data-i="' + i + '" data-k="pid">' + R.products.map(x => '<option value="' + esc(x.id) + '"' + (x.id === prod.id ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></div>';
+    h += '<div><label>保費繳付期</label><select data-i="' + i + '" data-k="ti">' + prod.terms.map((x, j) => '<option value="' + j + '"' + (x === t ? ' selected' : '') + '>' + esc(x.term) + '</option>').join('') + '</select></div>';
+    h += f('保費金額', 'prem') + f('每年保費徵費', 'levy', '自動計算') + f('電子保費現金券金額', 'coupon', '0');
+    h += '<div><label>其他優惠名稱</label><input type="text" data-i="' + i + '" data-k="oName" value="' + esc(p.oName) + '"></div>' + f('其他優惠（佔保費 %）', 'oPct', '0');
+    if (p.prepay && canPre) {
+      const sel = prepayOpt(p);
+      h += '<div><label>預繳保費期</label><select data-i="' + i + '" data-k="preN">' + R.prepay.options.map(o => '<option value="' + o.n + '"' + (o === sel ? ' selected' : '') + '>' + o.n + '年（投保時繳付' + (o.n + 1) + '年保費）</option>').join('') + '</select></div>';
+      h += f('預繳保證年利率（%）', 'preR', '自動計算');
+    }
+    h += '</div><div class="checks">';
+    (t.extras || []).forEach((e, j) => {
+      h += '<label><input type="checkbox" data-i="' + i + '" data-k="ex" data-j="' + j + '"' + (p.ex[j] ? ' checked' : '') + '> ' + esc(e.label) + '（+' + e.add + (t.unit === 'm' ? '個月' : '%') + '）</label>';
+    });
+    if (t.xp) h += '<label><input type="checkbox" data-i="' + i + '" data-k="xp"' + (p.xp ? ' checked' : '') + '> 同時繳付定期保費及額外保費</label>';
+    if (canPre) h += '<label><input type="checkbox" data-i="' + i + '" data-k="prepay"' + (p.prepay ? ' checked' : '') + '> 預繳保費</label>';
+    h += '</div><div id="res' + i + '"></div></section>';
+    return h;
+  }
+
+  function renderRes(i) {
+    const p = plans[i], c = calc(p);
+    let h = '';
+    c.warns.forEach(w => { h += '<div class="warn">' + w + '</div>'; });
+    if (c.period) h += '<div class="tip">' + c.period + '</div>';
+    c.hints.forEach(x => { h += '<div class="tip">' + x + '</div>'; });
+
+    h += '<div class="cards">' +
+      '<div class="card hi"><small>總優惠金額</small><b>' + cur + f0(c.totDed) + '</b></div>' +
+      '<div class="card hi"><small>總優惠百分比</small><b>' + c.pctTxt + '</b></div>' +
+      '<div class="card"><small>' + (c.lifelong ? '首5年實繳總額' : '實繳總額') + '</small><b>' + cur + f2(c.totNet) + '</b></div>' +
+      (c.pre ? '<div class="card"><small>投保時一次性支付（保費，未計徵費及優惠）</small><b>' + cur + f0(c.pre.upfront) + '</b></div>' : '') + '</div>';
+
+    // 優惠明細：固定三欄（名稱靠左、幅度置中、金額靠右），每行對齊
+    const row = (name, tag, amt, tot) => '<tr' + (tot ? ' class="btot"' : '') + '><td class="bname">' + name + '</td><td class="bt"><span class="btag">' + tag + '</span></td><td class="bamt">' + cur + f0(amt) + '</td></tr>';
+    const oName = (p.oName && p.oName !== '其他優惠') ? '其他優惠｜' + esc(p.oName) : '其他優惠';
+    h += '<div class="bd"><div class="bd-h">優惠明細</div><table class="bdt"><tbody>' +
+      row(c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt) +
+      row('配搭指定產品額外優惠', c.ext + c.unit, c.extAmt) +
+      row(oName, c.oP + '%', c.otherAmt) +
+      (c.couponAmt ? row('電子保費現金券', '現金券', c.couponAmt) : '') +
+      (c.pre ? row('預繳優惠利息', '預繳' + c.pre.n + '年・年利率 ' + c.pre.rate + '%', c.pre.tot) : '') +
+      row('總優惠金額', c.pctTxt, c.totDed, true) + '</tbody></table></div>';
+
+    const body = tableRows(c);
+    h += '<div class="th-bar"><b>每年實繳保費</b><button class="btn alt sm" data-act="cpt" data-i="' + i + '">複製表格</button></div>';
+    h += '<div class="scroll"><table class="tbl"><thead><tr><th>保單年度</th><th>原保費<br>（包括保費徵費）</th><th>優惠／回贈詳情</th><th>扣減金額<br>（整數）</th><th>實繳保費</th></tr></thead><tbody>';
+    body.forEach((r, k) => {
+      h += '<tr' + (k === body.length - 1 ? ' class="tot"' : '') + '><td class="yr">' + esc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2].map(esc).join('<br>') +
+        '</td><td class="ded">' + r[3].map(esc).join('<br>') + '</td><td class="pay">' + r[4] + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    if (c.pre) h += '<div class="note">註：預繳優惠利息實際是存入保單的現金儲備金戶口，上表為方便比較，按年列作扣減。各年利息向下取整顯示，總計按未取整利息計算，故與各年相加可能相差 1 至 2 元。</div>';
+    if (c.summary) h += '<div class="sumbox"><div class="bar"><b>優惠摘要（客戶版）</b><button class="btn alt sm" data-act="cp" data-i="' + i + '">複製文字</button></div><div class="sumtxt">' + esc(c.summary) + '</div></div>';
+    $('res' + i).innerHTML = h;
+  }
+
+  function renderCmp() {
+    let h = '<thead><tr><th>方案</th><th>產品</th><th>保費金額</th><th>總原保費</th><th>總優惠</th><th>實繳總額</th><th>總優惠百分比</th></tr></thead><tbody>';
+    plans.forEach(p => {
+      const c = calc(p);
+      h += '<tr><td class="yr">' + esc(p.name) + '</td><td>' + esc(c.prod.name) + '（' + esc(c.t.term) + (c.pre ? '，預繳' + c.pre.n + '年' : '') + '）</td><td>' + f0(c.P) + '</td><td>' + f2(c.totOrig) +
+        '</td><td class="ded">-' + f0(c.totDed) + '</td><td class="pay">' + f2(c.totNet) + '</td><td>' + c.pctTxt + '</td></tr>';
+    });
+    $('cmp').innerHTML = h + '</tbody>';
+  }
+
+  function renderPlans() {
+    $('plans').innerHTML = plans.map(planHtml).join('');
+    plans.forEach((p, i) => renderRes(i));
+    renderCmp();
+  }
+
+  function renderHead() {
+    $('ver').innerHTML = '保費回贈：' + esc(R.version || '未命名') + '（' + esc(SRC.rebate) + '）<br>預繳優惠：' +
+      (R.prepay ? esc(R.prepay.version || '未命名') + '（' + esc(SRC.prepay) + '）' : '沒有');
+    const keys = Object.keys(R.fx || { 'US$': 1 });
+    if (!keys.includes(cur)) cur = keys[0];
+    $('cur').innerHTML = keys.map(k => '<option' + (k === cur ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
+    $('rulesTxt').value = JSON.stringify(R, null, 1);
+  }
+
+  // ---------- 複製 ----------
+  function done(b, pr, old) {
+    pr.then(() => { b.textContent = '已複製 ✓'; setTimeout(() => { b.textContent = old; }, 1500); })
+      .catch(() => alert('未能自動複製，請長按內容手動選取。'));
+  }
+  function copyTable(i, b) {
+    const c = calc(plans[i]), body = tableRows(c);
+    const tsv = [TH.join('\t')].concat(body.map(r => [r[0], r[1], r[2].join('；'), r[3].join('；'), r[4]].join('\t'))).join('\n');
+    const html = '<table><thead><tr>' + TH.map(x => '<th>' + esc(x) + '</th>').join('') + '</tr></thead><tbody>' +
+      body.map(r => '<tr><td>' + esc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2].map(esc).join('<br>') + '</td><td>' + r[3].map(esc).join('<br>') + '</td><td>' + r[4] + '</td></tr>').join('') + '</tbody></table>';
+    let pr;
+    try {
+      if (navigator.clipboard && window.ClipboardItem)
+        pr = navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([tsv], { type: 'text/plain' }) })]);
+      else if (navigator.clipboard && navigator.clipboard.writeText) pr = navigator.clipboard.writeText(tsv);
+      else pr = Promise.reject();
+    } catch (e) { pr = Promise.reject(); }
+    done(b, pr, '複製表格');
+  }
+
+  // ---------- 事件 ----------
+  $('plans').addEventListener('input', ev => {
+    const t = ev.target, k = t.dataset.k;
+    if (!k || t.type === 'checkbox' || t.tagName === 'SELECT') return;
+    const i = +t.dataset.i;
+    plans[i][k] = t.value; renderRes(i); renderCmp();
+  });
+  $('plans').addEventListener('change', ev => {
+    const t = ev.target, k = t.dataset.k;
+    if (!k) return;
+    const p = plans[+t.dataset.i];
+    if (t.tagName === 'SELECT') {
+      if (k === 'preN') { p.preN = +t.value; renderPlans(); return; }
+      if (k === 'pid') { p.pid = t.value; p.ti = 0; p.xp = false; } else p.ti = +t.value;
+      p.ex = []; renderPlans();
+    } else if (t.type === 'checkbox') {
+      if (k === 'ex') p.ex[+t.dataset.j] = t.checked; else p[k] = t.checked;
+      renderPlans();
+    }
+  });
+  $('plans').addEventListener('click', ev => {
+    const b = ev.target.closest('[data-act]'); if (!b) return;
+    const i = +b.dataset.i, act = b.dataset.act;
+    if (act === 'cpt') { copyTable(i, b); return; }
+    if (act === 'cp') {
+      const txt = plans[i].name + '\n' + calc(plans[i]).summary;
+      const pr = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(txt) : Promise.reject();
+      done(b, pr, '複製文字');
+      return;
+    }
+    if (act === 'del') plans.splice(i, 1);
+    else { const cp = JSON.parse(JSON.stringify(plans[i])); cp.name += '（副本）'; plans.splice(i + 1, 0, cp); }
+    renderPlans();
+  });
+  $('addPlan').addEventListener('click', () => { plans.push(newPlan()); renderPlans(); });
+  $('cur').addEventListener('change', () => { cur = $('cur').value; renderPlans(); });
+
+  // ---------- 規則更新 ----------
+  function setRules(obj, msg) {
+    if (!obj || !Array.isArray(obj.products) || !obj.products.length || obj.products.some(x => !x.id || !Array.isArray(x.terms) || !x.terms.length || x.terms.some(t => !Array.isArray(t.tiers) || !t.tiers.length)))
+      throw new Error('規則格式不正確');
+    if (obj.prepay && (!Array.isArray(obj.prepay.options) || obj.prepay.options.some(o => !o.n || !Array.isArray(o.tiers) || !o.tiers.length)))
+      throw new Error('預繳規則格式不正確');
+    if (!obj.fx) obj.fx = { 'US$': 1 };
+    if (!obj.levy) obj.levy = { rate: 0, cap: {} };
+    if (!obj.levy.cap) obj.levy.cap = {};
+    R = obj;
+    plans.forEach(p => { if (!R.products.some(x => x.id === p.pid)) { p.pid = R.products[0].id; } p.ti = 0; p.ex = []; p.xp = false; });
+    renderHead(); renderPlans();
+    $('rulesMsg').textContent = msg || '';
+  }
+  // 把保費回贈檔（有 products）或預繳優惠檔（有 options）合併到現有規則
+  function mergeRules(base, j) {
+    const o = JSON.parse(JSON.stringify(base));
+    if (j && Array.isArray(j.products)) {
+      o.version = j.version; o.fx = j.fx; o.levy = j.levy; o.products = j.products;
+      if (j.prepay) o.prepay = j.prepay;
+    } else if (j && Array.isArray(j.options)) o.prepay = j;
+    else throw new Error('不是保費回贈或預繳優惠的規則檔');
+    return o;
+  }
+  function dlJson(name, obj) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 1)], { type: 'application/json' }));
+    a.download = name; a.click();
+  }
+  $('applyRules').addEventListener('click', () => {
+    try { setRules(JSON.parse($('rulesTxt').value), '已套用。'); SRC = { rebate: '手動套用', prepay: '手動套用' }; renderHead(); }
+    catch (e) { $('rulesMsg').textContent = '套用失敗：' + e.message; }
+  });
+  $('resetRules').addEventListener('click', () => { SRC = { rebate: '內置', prepay: '內置' }; setRules(JSON.parse(JSON.stringify(DEFAULT_RULES)), '已還原內置規則。'); });
+  $('dlRebate').addEventListener('click', () => {
+    try { const o = JSON.parse($('rulesTxt').value); dlJson('rebate.json', { version: o.version, fx: o.fx, levy: o.levy, products: o.products }); }
+    catch (e) { $('rulesMsg').textContent = '下載失敗：' + e.message; }
+  });
+  $('dlPrepay').addEventListener('click', () => {
+    try {
+      const o = JSON.parse($('rulesTxt').value);
+      if (!o.prepay) { $('rulesMsg').textContent = '目前沒有預繳優惠規則。'; return; }
+      dlJson('prepay.json', o.prepay);
+    } catch (e) { $('rulesMsg').textContent = '下載失敗：' + e.message; }
+  });
+  $('upRules').addEventListener('click', () => $('rulesFile').click());
+  $('rulesFile').addEventListener('change', async ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    try {
+      const j = JSON.parse(await f.text());
+      setRules(mergeRules(R, j), '已匯入 ' + f.name + '。');
+      if (Array.isArray(j.products)) SRC.rebate = f.name;
+      if (Array.isArray(j.options) || j.prepay) SRC.prepay = f.name;
+      renderHead();
+    } catch (e) { $('rulesMsg').textContent = '匯入失敗：' + e.message; }
+    ev.target.value = '';
+  });
+
+  // ---------- 匯出 Excel（ExcelJS，含格式）----------
+  const XC = { navy: 'FF0F172A', navy2: 'FF1E293B', soft: 'FFFEF3C7', light: 'FFF8FAFC', line: 'FFCBD5E1', pay: 'FFFFF7ED', payTxt: 'FF9A3412', red: 'FFDC2626', mut: 'FF64748B', white: 'FFFFFFFF' };
+  function xBorder() { const s = { style: 'thin', color: { argb: XC.line } }; return { top: s, left: s, bottom: s, right: s }; }
+  // 寫入一格（c1 至 c2 橫向合併）；o: bold, italic, size, color, fill, align, fmt, noBorder
+  function xCell(ws, r, c1, c2, v, o) {
+    o = o || {};
+    for (let c = c1; c <= c2; c++) {
+      const cell = ws.getCell(r, c);
+      if (c === c1) cell.value = v;
+      cell.font = { name: 'Microsoft JhengHei', size: o.size || 11, bold: !!o.bold, italic: !!o.italic, color: { argb: o.color || XC.navy } };
+      cell.alignment = { horizontal: o.align || 'center', vertical: 'middle', wrapText: true };
+      if (o.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: o.fill } };
+      if (!o.noBorder) cell.border = xBorder();
+      if (o.fmt) cell.numFmt = o.fmt;
+    }
+    if (c2 > c1) ws.mergeCells(r, c1, r, c2);
+  }
+  // 按文字長度估算列高（w = 欄寬）
+  function xH(s, w) {
+    let n = 0;
+    String(s == null ? '' : s).split('\n').forEach(l => {
+      let u = 0;
+      for (const ch of l) u += ch.charCodeAt(0) > 255 ? 2 : 1;
+      n += Math.max(1, Math.ceil(u / (w * 0.85)));
+    });
+    return Math.max(22, n * 17 + 5);
+  }
+  function xFmt() {
+    const q = '"' + String(cur).replace(/"/g, '') + '"';
+    return { f2: q + '#,##0.00', f0: q + '#,##0', neg: q + '#,##0;-' + q + '#,##0' };
+  }
+  function xPay(c) {
+    if (c.pre) return '預繳' + c.pre.n + '年（投保時一次繳付' + (c.pre.n + 1) + '年保費）';
+    return c.upfrontMode ? '一次性繳付' : '每年繳付';
+  }
+  function xToday() { const d = new Date(); return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
+  const XHEAD = { bold: true, color: XC.white, fill: XC.navy2 };
+
+  // 分頁一：優惠對比（項目為列，方案為欄）
+  function xCompare(wb, F, sub) {
+    const cs = plans.map(calc), last = plans.length + 1;
+    const ws = wb.addWorksheet('優惠對比', { views: [{ showGridLines: false }] });
+    ws.columns = [{ width: 34 }].concat(plans.map(() => ({ width: 28 })));
+    ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    const W = 34 + 28 * plans.length;
+    xCell(ws, 1, 1, last, '保費優惠方案對比', { bold: true, size: 16, color: XC.white, fill: XC.navy, noBorder: true });
+    ws.getRow(1).height = 36;
+    xCell(ws, 2, 1, last, sub, { size: 9, color: XC.mut, fill: XC.light, noBorder: true });
+    ws.getRow(2).height = xH(sub, W);
+    let r = 4;
+    xCell(ws, r, 1, 1, '項目', XHEAD);
+    let hh = 26;
+    plans.forEach((p, k) => { xCell(ws, r, k + 2, k + 2, p.name, XHEAD); hh = Math.max(hh, xH(p.name, 28)); });
+    ws.getRow(r).height = hh; r++;
+    const line = (label, fn, o) => {
+      o = o || {};
+      xCell(ws, r, 1, 1, label, { bold: true, align: 'left', fill: o.fill || XC.light, color: o.color });
+      let h = xH(label, 34);
+      cs.forEach((c, k) => { const v = fn(c); xCell(ws, r, k + 2, k + 2, v, o); if (typeof v === 'string') h = Math.max(h, xH(v, 28)); });
+      ws.getRow(r).height = h; r++;
+    };
+    const hi = { fmt: F.f0, bold: true, fill: XC.soft };
+    line('產品', c => c.prod.name);
+    line('保費繳付期', c => c.t.term);
+    line('繳費安排', c => xPay(c));
+    line('保費金額', c => c.P, { fmt: F.f0 });
+    line('基本回贈／保費折扣（幅度）', c => c.base + c.unit);
+    line('基本回贈／保費折扣（金額）', c => c.baseAmt, { fmt: F.f0 });
+    line('配搭指定產品額外優惠（幅度）', c => c.ext + c.unit);
+    line('配搭指定產品額外優惠（金額）', c => c.extAmt, { fmt: F.f0 });
+    line('其他優惠', c => c.otherAmt, { fmt: F.f0 });
+    line('電子保費現金券', c => c.couponAmt, { fmt: F.f0 });
+    line('預繳優惠利息', c => c.pre ? c.pre.tot : 0, { fmt: F.f0 });
+    line('總優惠金額', c => c.totDed, hi);
+    line('總優惠百分比', c => c.pctTxt, { bold: true, fill: XC.soft });
+    line('總原保費（包括保費徵費）', c => r2(c.totOrig), { fmt: F.f2 });
+    line('實繳總額', c => r2(c.totNet), { fmt: F.f2, bold: true, fill: XC.pay, color: XC.payTxt });
+    line('投保時一次性支付（保費，未計徵費及優惠）', c => c.pre ? c.pre.upfront : '—', { fmt: F.f0 });
+    r++;
+    const notes = [];
+    if (cs.some(c => c.lifelong)) notes.push('＊ 終身或每年續保的計劃，總原保費及實繳總額按首5年計算。');
+    notes.push(DISCLAIMER);
+    notes.forEach(t => { xCell(ws, r, 1, last, t, { size: 9, italic: true, color: XC.mut, align: 'left', noBorder: true }); ws.getRow(r).height = xH(t, W); r++; });
+  }
+
+  // 每個方案一個分頁：保單資料、優惠明細、每年實繳保費、優惠摘要
+  function xPlan(wb, p, i, F, sub) {
+    const c = calc(p), W = 132;
+    const nm = ((i + 1) + '.' + (p.name || '')).replace(/[\\\/\?\*\[\]:']/g, ' ').slice(0, 28);
+    const ws = wb.addWorksheet(nm, { views: [{ showGridLines: false }] });
+    ws.columns = [{ width: 26 }, { width: 22 }, { width: 46 }, { width: 18 }, { width: 20 }];
+    ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    const title = '保費優惠方案｜' + (p.name || '');
+    xCell(ws, 1, 1, 5, title, { bold: true, size: 16, color: XC.white, fill: XC.navy, noBorder: true });
+    ws.getRow(1).height = Math.max(36, xH(title, 90));
+    xCell(ws, 2, 1, 5, sub, { size: 9, color: XC.mut, fill: XC.light, noBorder: true });
+    ws.getRow(2).height = xH(sub, W);
+    let r = 3;
+    const sec = t => { r++; xCell(ws, r, 1, 5, t, { bold: true, size: 12, fill: XC.soft, align: 'left' }); ws.getRow(r).height = 26; r++; };
+    const info = (label, v, fmt) => {
+      xCell(ws, r, 1, 1, label, { bold: true, fill: XC.light, align: 'left' });
+      xCell(ws, r, 2, 5, v, { align: 'left', fmt });
+      ws.getRow(r).height = Math.max(xH(label, 26), typeof v === 'string' ? xH(v, 106) : 22); r++;
+    };
+
+    sec('一、保單資料');
+    info('產品', c.prod.name);
+    info('保費繳付期', c.t.term);
+    info('保單貨幣', (CUR_NAME[cur] || cur) + '（' + cur + '）');
+    info('保費金額', c.P, F.f2);
+    info('每年保費徵費', r2(c.levy), F.f2);
+    info('繳費安排', xPay(c));
+    if (c.pre) {
+      info('預繳保證年利率', c.pre.rate + '%');
+      info('投保時一次性支付（保費，未計徵費及優惠）', c.pre.upfront, F.f0);
+    }
+    const per = c.warns.concat(c.period ? [c.period] : []).join('；');
+    if (per) info('推廣期', per);
+
+    sec('二、優惠明細');
+    xCell(ws, r, 1, 2, '優惠項目', XHEAD); xCell(ws, r, 3, 3, '優惠幅度', XHEAD); xCell(ws, r, 4, 5, '優惠金額', XHEAD);
+    ws.getRow(r).height = 26; r++;
+    const item = (name, tag, amt, tot) => {
+      const o = tot ? { bold: true, fill: XC.soft } : {};
+      xCell(ws, r, 1, 2, name, Object.assign({ align: 'left' }, o, { bold: true }));
+      xCell(ws, r, 3, 3, tag, o);
+      xCell(ws, r, 4, 5, amt, Object.assign({ fmt: F.f0 }, o, { bold: true }));
+      ws.getRow(r).height = Math.max(tot ? 26 : 22, xH(name, 48), xH(tag, 46)); r++;
+    };
+    item(c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt);
+    item('配搭指定產品額外優惠', c.ext + c.unit, c.extAmt);
+    item((p.oName && p.oName !== '其他優惠') ? '其他優惠｜' + p.oName : '其他優惠', c.oP + '%', c.otherAmt);
+    if (c.couponAmt) item('電子保費現金券', '現金券', c.couponAmt);
+    if (c.pre) item('預繳優惠利息', '預繳' + c.pre.n + '年・保證年利率 ' + c.pre.rate + '%', c.pre.tot);
+    item('總優惠金額', '總優惠百分比 ' + c.pctTxt, c.totDed, true);
+
+    sec('三、每年實繳保費');
+    TH.forEach((t, k) => xCell(ws, r, k + 1, k + 1, t, XHEAD));
+    ws.getRow(r).height = 34; r++;
+    c.disp.forEach((row, k) => {
+      const multi = row.items.length > 1, z = k % 2 ? XC.light : undefined;
+      const det = row.items.length ? row.items.map((x, j) => (multi ? (j + 1) + '. ' : '') + x.label + '：-' + f0(x.amt)).join('\n') : '/';
+      xCell(ws, r, 1, 1, row.label, { bold: true, fill: z });
+      xCell(ws, r, 2, 2, r2(row.orig), { fmt: F.f2, fill: z });
+      xCell(ws, r, 3, 3, det, { fill: z });
+      xCell(ws, r, 4, 4, row.ded ? -row.ded : '/', { fmt: F.neg, bold: true, color: row.ded ? XC.red : XC.navy, fill: z });
+      xCell(ws, r, 5, 5, r2(row.net), { fmt: F.f2, bold: true, fill: XC.pay, color: XC.payTxt });
+      ws.getRow(r).height = Math.max(24, xH(row.label, 26), xH(det, 46)); r++;
+    });
+    const T = { bold: true, fill: XC.soft };
+    xCell(ws, r, 1, 1, c.lifelong ? '首5年合計' : '總計', T);
+    xCell(ws, r, 2, 2, r2(c.totOrig), Object.assign({ fmt: F.f2 }, T));
+    xCell(ws, r, 3, 3, '', T);
+    xCell(ws, r, 4, 4, -c.totDed, Object.assign({ fmt: F.neg }, T, { color: XC.red }));
+    xCell(ws, r, 5, 5, r2(c.totNet), Object.assign({ fmt: F.f2 }, T, { color: XC.payTxt }));
+    ws.getRow(r).height = 28; r++;
+    if (c.pre) {
+      const nt = '註：預繳優惠利息實際是存入保單的現金儲備金戶口，上表為方便比較，按年列作扣減。各年利息向下取整，總計按未取整利息計算，故與各年相加可能相差 1 至 2 元。';
+      xCell(ws, r, 1, 5, nt, { size: 9, italic: true, color: XC.mut, align: 'left', noBorder: true });
+      ws.getRow(r).height = xH(nt, W); r++;
+    }
+
+    if (c.summary) {
+      sec('四、優惠摘要');
+      c.summary.split('\n').forEach(l => {
+        const b = l.indexOf('✅') === 0 || l.indexOf('【') === 0;
+        xCell(ws, r, 1, 5, l, { align: 'left', bold: b });
+        ws.getRow(r).height = xH(l, W); r++;
+      });
+    }
+    r++;
+    xCell(ws, r, 1, 5, DISCLAIMER, { size: 9, italic: true, color: XC.mut, align: 'left', noBorder: true });
+    ws.getRow(r).height = 22;
+  }
+
+  $('exp').addEventListener('click', async () => {
+    if (!window.ExcelJS) { alert('Excel 元件未能載入，請檢查網絡後重新整理頁面再試。'); return; }
+    if (!plans.length) { alert('請先新增方案。'); return; }
+    const b = $('exp'), old = b.textContent;
+    b.textContent = '匯出中…';
+    try {
+      const wb = new ExcelJS.Workbook();
+      const F = xFmt(), sub = '製表日期：' + xToday() + '　｜　優惠規則：' + verTxt();
+      xCompare(wb, F, sub);
+      plans.forEach((p, i) => xPlan(wb, p, i, F, sub));
+      const buf = await wb.xlsx.writeBuffer();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      a.download = '保費優惠計算.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    } catch (e) { alert('匯出失敗：' + e.message); }
+    b.textContent = old;
+  });
+
+  // ---------- 啟動 ----------
+  // 自動讀取同一資料夾的 rebate.json（保費回贈）及 prepay.json（預繳優惠）；每期只需更換這兩個檔案
+  async function loadFiles() {
+    const get = async name => {
+      let r;
+      try { r = await fetch(name + '?t=' + Date.now(), { cache: 'no-store' }); } catch (e) { return {}; }
+      if (!r.ok) return {};
+      try { return { data: await r.json() }; } catch (e) { return { bad: true }; }
+    };
+    const res = await Promise.all([get('rebate.json'), get('prepay.json')]);
+    const errs = [];
+    const use = (name, x, key, ok) => {
+      if (x.bad) { errs.push(name + ' 格式有錯（可能貼漏或多了符號）'); return; }
+      if (!x.data) return;
+      try {
+        if (!ok(x.data)) throw new Error('內容與檔名不對應');
+        setRules(mergeRules(R, x.data), '');
+        SRC[key] = name;
+      } catch (e) { errs.push(name + '：' + e.message); }
+    };
+    use('rebate.json', res[0], 'rebate', j => Array.isArray(j.products));
+    use('prepay.json', res[1], 'prepay', j => Array.isArray(j.options));
+    renderHead();
+    if (errs.length) {
+      const m = $('loadMsg');
+      m.textContent = '⚠️ ' + errs.join('；') + '。該部分目前使用內置的舊規則，請先修正檔案，暫勿用作報價。';
+      m.style.display = 'block';
     }
   }
-  if (pre && !pre.manual) {
-    const nx = pre.opt.tiers.find(x => x[0] > usd);
-    if (nx) hints.push('💡 年繳保費再多 ' + cur + f0(nx[0] * fx - P) + '，預繳保證年利率可升至 ' + nx[1] + '%。');
-  }
-  let period = '';
-  if (t.end) { if (isPast(t.end)) warns.push('保費回贈的推廣期已於 ' + t.end + ' 結束，請更新優惠規則。'); else period = '保費回贈推廣期至 ' + t.end; }
-  if (pre && R.prepay.end) {
-    if (isPast(R.prepay.end)) warns.push('預繳優惠的推廣期已於 ' + R.prepay.end + ' 結束，請更新優惠規則。');
-    else period += (period ? '；' : '') + '預繳優惠推廣期至 ' + R.prepay.end + '（名額有限）';
-  }
-  const pctTxt = P ? (totDed / P * 100).toFixed(2) + '%' : '—';
-
-  return { prod, t, P, levy, unit, base, ext, total, years, lifelong, rows, disp, totOrig, totDed, totNet: totOrig - totDed,
-    baseAmt, extAmt, otherAmt, couponAmt, oP, pctTxt, upfrontMode: s.mode === 'upfront', hints, warns, period, pre, summary: lines.join('\n') };
-}
-
-// 每年實繳保費表格的資料（畫面及複製共用）
-function tableRows(c) {
-  const body = c.disp.map(r => {
-    const multi = r.items.length > 1;
-    return [r.label, f2(r.orig),
-      r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + x.label) : ['/'],
-      r.items.length ? r.items.map((x, k) => (multi ? (k + 1) + '. ' : '') + '-' + f0(x.amt)) : ['/'],
-      f2(r.net)];
-  });
-  body.push([c.lifelong ? '首5年合計' : '總計', f2(c.totOrig), [''], ['-' + f0(c.totDed)], f2(c.totNet)]);
-  return body;
-}
-
-// ---------- 畫面 ----------
-function planHtml(p, i) {
-  const prod = getProd(p), t = getTerm(p), canPre = prepayOK(p);
-  const f = (label, k, ph) => '<div><label>' + label + '</label><input type="text" inputmode="decimal" data-i="' + i + '" data-k="' + k + '" value="' + esc(p[k]) + '" placeholder="' + (ph || '') + '"></div>';
-  let h = '<section class="plan"><div class="bar"><input type="text" class="pname" data-i="' + i + '" data-k="name" value="' + esc(p.name) + '">' +
-    '<button class="btn alt sm" data-act="copy" data-i="' + i + '">複製方案</button><button class="btn alt sm" data-act="del" data-i="' + i + '">刪除</button></div><div class="grid">';
-  h += '<div><label>產品</label><select data-i="' + i + '" data-k="pid">' + R.products.map(x => '<option value="' + esc(x.id) + '"' + (x.id === prod.id ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></div>';
-  h += '<div><label>保費繳付期</label><select data-i="' + i + '" data-k="ti">' + prod.terms.map((x, j) => '<option value="' + j + '"' + (x === t ? ' selected' : '') + '>' + esc(x.term) + '</option>').join('') + '</select></div>';
-  h += f('保費金額', 'prem') + f('每年保費徵費', 'levy', '自動計算') + f('電子保費現金券金額', 'coupon', '0');
-  h += '<div><label>其他優惠名稱</label><input type="text" data-i="' + i + '" data-k="oName" value="' + esc(p.oName) + '"></div>' + f('其他優惠（佔保費 %）', 'oPct', '0');
-  if (p.prepay && canPre) {
-    const sel = prepayOpt(p);
-    h += '<div><label>預繳保費期</label><select data-i="' + i + '" data-k="preN">' + R.prepay.options.map(o => '<option value="' + o.n + '"' + (o === sel ? ' selected' : '') + '>' + o.n + '年（投保時繳付' + (o.n + 1) + '年保費）</option>').join('') + '</select></div>';
-    h += f('預繳保證年利率（%）', 'preR', '自動計算');
-  }
-  h += '</div><div class="checks">';
-  (t.extras || []).forEach((e, j) => {
-    h += '<label><input type="checkbox" data-i="' + i + '" data-k="ex" data-j="' + j + '"' + (p.ex[j] ? ' checked' : '') + '> ' + esc(e.label) + '（+' + e.add + (t.unit === 'm' ? '個月' : '%') + '）</label>';
-  });
-  if (t.xp) h += '<label><input type="checkbox" data-i="' + i + '" data-k="xp"' + (p.xp ? ' checked' : '') + '> 同時繳付定期保費及額外保費</label>';
-  if (canPre) h += '<label><input type="checkbox" data-i="' + i + '" data-k="prepay"' + (p.prepay ? ' checked' : '') + '> 預繳保費</label>';
-  h += '</div><div id="res' + i + '"></div></section>';
-  return h;
-}
-
-function renderRes(i) {
-  const p = plans[i], c = calc(p);
-  let h = '';
-  c.warns.forEach(w => { h += '<div class="warn">' + w + '</div>'; });
-  if (c.period) h += '<div class="tip">' + c.period + '</div>';
-  c.hints.forEach(x => { h += '<div class="tip">' + x + '</div>'; });
-
-  h += '<div class="cards">' +
-    '<div class="card hi"><small>總優惠金額</small><b>' + cur + f0(c.totDed) + '</b></div>' +
-    '<div class="card hi"><small>總優惠百分比</small><b>' + c.pctTxt + '</b></div>' +
-    '<div class="card"><small>' + (c.lifelong ? '首5年實繳總額' : '實繳總額') + '</small><b>' + cur + f2(c.totNet) + '</b></div>' +
-    (c.pre ? '<div class="card"><small>投保時一次性支付（保費，未計徵費及優惠）</small><b>' + cur + f0(c.pre.upfront) + '</b></div>' : '') + '</div>';
-
-  // 優惠明細：固定三欄（名稱靠左、幅度置中、金額靠右），每行對齊
-  const row = (name, tag, amt, tot) => '<tr' + (tot ? ' class="btot"' : '') + '><td class="bname">' + name + '</td><td class="bt"><span class="btag">' + tag + '</span></td><td class="bamt">' + cur + f0(amt) + '</td></tr>';
-  const oName = (p.oName && p.oName !== '其他優惠') ? '其他優惠｜' + esc(p.oName) : '其他優惠';
-  h += '<div class="bd"><div class="bd-h">優惠明細</div><table class="bdt"><tbody>' +
-    row(c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt) +
-    row('配搭指定產品額外優惠', c.ext + c.unit, c.extAmt) +
-    row(oName, c.oP + '%', c.otherAmt) +
-    (c.couponAmt ? row('電子保費現金券', '現金券', c.couponAmt) : '') +
-    (c.pre ? row('預繳優惠利息', '預繳' + c.pre.n + '年・年利率 ' + c.pre.rate + '%', c.pre.tot) : '') +
-    row('總優惠金額', c.pctTxt, c.totDed, true) + '</tbody></table></div>';
-
-  const body = tableRows(c);
-  h += '<div class="th-bar"><b>每年實繳保費</b><button class="btn alt sm" data-act="cpt" data-i="' + i + '">複製表格</button></div>';
-  h += '<div class="scroll"><table class="tbl"><thead><tr><th>保單年度</th><th>原保費<br>（包括保費徵費）</th><th>優惠／回贈詳情</th><th>扣減金額<br>（整數）</th><th>實繳保費</th></tr></thead><tbody>';
-  body.forEach((r, k) => {
-    h += '<tr' + (k === body.length - 1 ? ' class="tot"' : '') + '><td class="yr">' + esc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2].map(esc).join('<br>') +
-      '</td><td class="ded">' + r[3].map(esc).join('<br>') + '</td><td class="pay">' + r[4] + '</td></tr>';
-  });
-  h += '</tbody></table></div>';
-  if (c.pre) h += '<div class="note">註：預繳優惠利息實際是存入保單的現金儲備金戶口，上表為方便比較，按年列作扣減。各年利息向下取整顯示，總計按未取整利息計算，故與各年相加可能相差 1 至 2 元。</div>';
-  if (c.summary) h += '<div class="sumbox"><div class="bar"><b>優惠摘要（客戶版）</b><button class="btn alt sm" data-act="cp" data-i="' + i + '">複製文字</button></div><div class="sumtxt">' + esc(c.summary) + '</div></div>';
-  $('res' + i).innerHTML = h;
-}
-
-function renderCmp() {
-  let h = '<thead><tr><th>方案</th><th>產品</th><th>保費金額</th><th>總原保費</th><th>總優惠</th><th>實繳總額</th><th>總優惠百分比</th></tr></thead><tbody>';
-  plans.forEach(p => {
-    const c = calc(p);
-    h += '<tr><td class="yr">' + esc(p.name) + '</td><td>' + esc(c.prod.name) + '（' + esc(c.t.term) + (c.pre ? '，預繳' + c.pre.n + '年' : '') + '）</td><td>' + f0(c.P) + '</td><td>' + f2(c.totOrig) +
-      '</td><td class="ded">-' + f0(c.totDed) + '</td><td class="pay">' + f2(c.totNet) + '</td><td>' + c.pctTxt + '</td></tr>';
-  });
-  $('cmp').innerHTML = h + '</tbody>';
-}
-
-function renderPlans() {
-  $('plans').innerHTML = plans.map(planHtml).join('');
-  plans.forEach((p, i) => renderRes(i));
-  renderCmp();
-}
-
-function renderHead() {
-  $('ver').textContent = '目前規則：' + (R.version || '未命名');
-  const keys = Object.keys(R.fx || { 'US$': 1 });
-  if (!keys.includes(cur)) cur = keys[0];
-  $('cur').innerHTML = keys.map(k => '<option' + (k === cur ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
-  $('rulesTxt').value = JSON.stringify(R, null, 1);
-}
-
-// ---------- 複製 ----------
-function done(b, pr, old) {
-  pr.then(() => { b.textContent = '已複製 ✓'; setTimeout(() => { b.textContent = old; }, 1500); })
-    .catch(() => alert('未能自動複製，請長按內容手動選取。'));
-}
-function copyTable(i, b) {
-  const c = calc(plans[i]), body = tableRows(c);
-  const tsv = [TH.join('\t')].concat(body.map(r => [r[0], r[1], r[2].join('；'), r[3].join('；'), r[4]].join('\t'))).join('\n');
-  const html = '<table><thead><tr>' + TH.map(x => '<th>' + esc(x) + '</th>').join('') + '</tr></thead><tbody>' +
-    body.map(r => '<tr><td>' + esc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2].map(esc).join('<br>') + '</td><td>' + r[3].map(esc).join('<br>') + '</td><td>' + r[4] + '</td></tr>').join('') + '</tbody></table>';
-  let pr;
-  try {
-    if (navigator.clipboard && window.ClipboardItem)
-      pr = navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([tsv], { type: 'text/plain' }) })]);
-    else if (navigator.clipboard && navigator.clipboard.writeText) pr = navigator.clipboard.writeText(tsv);
-    else pr = Promise.reject();
-  } catch (e) { pr = Promise.reject(); }
-  done(b, pr, '複製表格');
-}
-
-// ---------- 事件 ----------
-$('plans').addEventListener('input', ev => {
-  const t = ev.target, k = t.dataset.k;
-  if (!k || t.type === 'checkbox' || t.tagName === 'SELECT') return;
-  const i = +t.dataset.i;
-  plans[i][k] = t.value; renderRes(i); renderCmp();
-});
-$('plans').addEventListener('change', ev => {
-  const t = ev.target, k = t.dataset.k;
-  if (!k) return;
-  const p = plans[+t.dataset.i];
-  if (t.tagName === 'SELECT') {
-    if (k === 'preN') { p.preN = +t.value; renderPlans(); return; }
-    if (k === 'pid') { p.pid = t.value; p.ti = 0; p.xp = false; } else p.ti = +t.value;
-    p.ex = []; renderPlans();
-  } else if (t.type === 'checkbox') {
-    if (k === 'ex') p.ex[+t.dataset.j] = t.checked; else p[k] = t.checked;
-    renderPlans();
-  }
-});
-$('plans').addEventListener('click', ev => {
-  const b = ev.target.closest('[data-act]'); if (!b) return;
-  const i = +b.dataset.i, act = b.dataset.act;
-  if (act === 'cpt') { copyTable(i, b); return; }
-  if (act === 'cp') {
-    const txt = plans[i].name + '\n' + calc(plans[i]).summary;
-    const pr = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(txt) : Promise.reject();
-    done(b, pr, '複製文字');
-    return;
-  }
-  if (act === 'del') plans.splice(i, 1);
-  else { const cp = JSON.parse(JSON.stringify(plans[i])); cp.name += '（副本）'; plans.splice(i + 1, 0, cp); }
-  renderPlans();
-});
-$('addPlan').addEventListener('click', () => { plans.push(newPlan()); renderPlans(); });
-$('cur').addEventListener('change', () => { cur = $('cur').value; renderPlans(); });
-
-// ---------- 規則更新 ----------
-function setRules(obj, msg) {
-  if (!obj || !Array.isArray(obj.products) || !obj.products.length || obj.products.some(x => !x.id || !Array.isArray(x.terms) || !x.terms.length || x.terms.some(t => !Array.isArray(t.tiers) || !t.tiers.length)))
-    throw new Error('規則格式不正確');
-  if (obj.prepay && (!Array.isArray(obj.prepay.options) || obj.prepay.options.some(o => !o.n || !Array.isArray(o.tiers) || !o.tiers.length)))
-    throw new Error('預繳規則格式不正確');
-  if (!obj.fx) obj.fx = { 'US$': 1 };
-  if (!obj.levy) obj.levy = { rate: 0, cap: {} };
-  if (!obj.levy.cap) obj.levy.cap = {};
-  R = obj;
-  plans.forEach(p => { if (!R.products.some(x => x.id === p.pid)) { p.pid = R.products[0].id; } p.ti = 0; p.ex = []; p.xp = false; });
+  plans.push(newPlan({ name: '方案1：預繳', prem: '100,000', prepay: true }));
+  plans.push(newPlan({ name: '方案2：不預繳', prem: '100,000' }));
   renderHead(); renderPlans();
-  $('rulesMsg').textContent = msg || '';
-}
-$('applyRules').addEventListener('click', () => {
-  try { setRules(JSON.parse($('rulesTxt').value), '已套用。'); } catch (e) { $('rulesMsg').textContent = '套用失敗：' + e.message; }
-});
-$('resetRules').addEventListener('click', () => setRules(JSON.parse(JSON.stringify(DEFAULT_RULES)), '已還原內置規則。'));
-$('dlRules').addEventListener('click', () => {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([$('rulesTxt').value], { type: 'application/json' }));
-  a.download = 'rules.json'; a.click();
-});
-$('upRules').addEventListener('click', () => $('rulesFile').click());
-$('rulesFile').addEventListener('change', async ev => {
-  const f = ev.target.files[0]; if (!f) return;
-  try { setRules(JSON.parse(await f.text()), '已匯入 ' + f.name + '。'); } catch (e) { $('rulesMsg').textContent = '匯入失敗：' + e.message; }
-  ev.target.value = '';
-});
-
-// ---------- 匯出 Excel（ExcelJS，含格式）----------
-const XC = { navy: 'FF0F172A', navy2: 'FF1E293B', soft: 'FFFEF3C7', light: 'FFF8FAFC', line: 'FFCBD5E1', pay: 'FFFFF7ED', payTxt: 'FF9A3412', red: 'FFDC2626', mut: 'FF64748B', white: 'FFFFFFFF' };
-function xBorder() { const s = { style: 'thin', color: { argb: XC.line } }; return { top: s, left: s, bottom: s, right: s }; }
-// 寫入一格（c1 至 c2 橫向合併）；o: bold, italic, size, color, fill, align, fmt, noBorder
-function xCell(ws, r, c1, c2, v, o) {
-  o = o || {};
-  for (let c = c1; c <= c2; c++) {
-    const cell = ws.getCell(r, c);
-    if (c === c1) cell.value = v;
-    cell.font = { name: 'Microsoft JhengHei', size: o.size || 11, bold: !!o.bold, italic: !!o.italic, color: { argb: o.color || XC.navy } };
-    cell.alignment = { horizontal: o.align || 'center', vertical: 'middle', wrapText: true };
-    if (o.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: o.fill } };
-    if (!o.noBorder) cell.border = xBorder();
-    if (o.fmt) cell.numFmt = o.fmt;
-  }
-  if (c2 > c1) ws.mergeCells(r, c1, r, c2);
-}
-// 按文字長度估算列高（w = 欄寬）
-function xH(s, w) {
-  let n = 0;
-  String(s == null ? '' : s).split('\n').forEach(l => {
-    let u = 0;
-    for (const ch of l) u += ch.charCodeAt(0) > 255 ? 2 : 1;
-    n += Math.max(1, Math.ceil(u / (w * 0.85)));
-  });
-  return Math.max(22, n * 17 + 5);
-}
-function xFmt() {
-  const q = '"' + String(cur).replace(/"/g, '') + '"';
-  return { f2: q + '#,##0.00', f0: q + '#,##0', neg: q + '#,##0;-' + q + '#,##0' };
-}
-function xPay(c) {
-  if (c.pre) return '預繳' + c.pre.n + '年（投保時一次繳付' + (c.pre.n + 1) + '年保費）';
-  return c.upfrontMode ? '一次性繳付' : '每年繳付';
-}
-function xToday() { const d = new Date(); return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
-const XHEAD = { bold: true, color: XC.white, fill: XC.navy2 };
-
-// 分頁一：優惠對比（項目為列，方案為欄）
-function xCompare(wb, F, sub) {
-  const cs = plans.map(calc), last = plans.length + 1;
-  const ws = wb.addWorksheet('優惠對比', { views: [{ showGridLines: false }] });
-  ws.columns = [{ width: 34 }].concat(plans.map(() => ({ width: 28 })));
-  ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
-  const W = 34 + 28 * plans.length;
-  xCell(ws, 1, 1, last, '保費優惠方案對比', { bold: true, size: 16, color: XC.white, fill: XC.navy, noBorder: true });
-  ws.getRow(1).height = 36;
-  xCell(ws, 2, 1, last, sub, { size: 9, color: XC.mut, fill: XC.light, noBorder: true });
-  ws.getRow(2).height = xH(sub, W);
-  let r = 4;
-  xCell(ws, r, 1, 1, '項目', XHEAD);
-  let hh = 26;
-  plans.forEach((p, k) => { xCell(ws, r, k + 2, k + 2, p.name, XHEAD); hh = Math.max(hh, xH(p.name, 28)); });
-  ws.getRow(r).height = hh; r++;
-  const line = (label, fn, o) => {
-    o = o || {};
-    xCell(ws, r, 1, 1, label, { bold: true, align: 'left', fill: o.fill || XC.light, color: o.color });
-    let h = xH(label, 34);
-    cs.forEach((c, k) => { const v = fn(c); xCell(ws, r, k + 2, k + 2, v, o); if (typeof v === 'string') h = Math.max(h, xH(v, 28)); });
-    ws.getRow(r).height = h; r++;
-  };
-  const hi = { fmt: F.f0, bold: true, fill: XC.soft };
-  line('產品', c => c.prod.name);
-  line('保費繳付期', c => c.t.term);
-  line('繳費安排', c => xPay(c));
-  line('保費金額', c => c.P, { fmt: F.f0 });
-  line('基本回贈／保費折扣（幅度）', c => c.base + c.unit);
-  line('基本回贈／保費折扣（金額）', c => c.baseAmt, { fmt: F.f0 });
-  line('配搭指定產品額外優惠（幅度）', c => c.ext + c.unit);
-  line('配搭指定產品額外優惠（金額）', c => c.extAmt, { fmt: F.f0 });
-  line('其他優惠', c => c.otherAmt, { fmt: F.f0 });
-  line('電子保費現金券', c => c.couponAmt, { fmt: F.f0 });
-  line('預繳優惠利息', c => c.pre ? c.pre.tot : 0, { fmt: F.f0 });
-  line('總優惠金額', c => c.totDed, hi);
-  line('總優惠百分比', c => c.pctTxt, { bold: true, fill: XC.soft });
-  line('總原保費（包括保費徵費）', c => r2(c.totOrig), { fmt: F.f2 });
-  line('實繳總額', c => r2(c.totNet), { fmt: F.f2, bold: true, fill: XC.pay, color: XC.payTxt });
-  line('投保時一次性支付（保費，未計徵費及優惠）', c => c.pre ? c.pre.upfront : '—', { fmt: F.f0 });
-  r++;
-  const notes = [];
-  if (cs.some(c => c.lifelong)) notes.push('＊ 終身或每年續保的計劃，總原保費及實繳總額按首5年計算。');
-  notes.push(DISCLAIMER);
-  notes.forEach(t => { xCell(ws, r, 1, last, t, { size: 9, italic: true, color: XC.mut, align: 'left', noBorder: true }); ws.getRow(r).height = xH(t, W); r++; });
-}
-
-// 每個方案一個分頁：保單資料、優惠明細、每年實繳保費、優惠摘要
-function xPlan(wb, p, i, F, sub) {
-  const c = calc(p), W = 132;
-  const nm = ((i + 1) + '.' + (p.name || '')).replace(/[\\\/\?\*\[\]:']/g, ' ').slice(0, 28);
-  const ws = wb.addWorksheet(nm, { views: [{ showGridLines: false }] });
-  ws.columns = [{ width: 26 }, { width: 22 }, { width: 46 }, { width: 18 }, { width: 20 }];
-  ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
-  const title = '保費優惠方案｜' + (p.name || '');
-  xCell(ws, 1, 1, 5, title, { bold: true, size: 16, color: XC.white, fill: XC.navy, noBorder: true });
-  ws.getRow(1).height = Math.max(36, xH(title, 90));
-  xCell(ws, 2, 1, 5, sub, { size: 9, color: XC.mut, fill: XC.light, noBorder: true });
-  ws.getRow(2).height = xH(sub, W);
-  let r = 3;
-  const sec = t => { r++; xCell(ws, r, 1, 5, t, { bold: true, size: 12, fill: XC.soft, align: 'left' }); ws.getRow(r).height = 26; r++; };
-  const info = (label, v, fmt) => {
-    xCell(ws, r, 1, 1, label, { bold: true, fill: XC.light, align: 'left' });
-    xCell(ws, r, 2, 5, v, { align: 'left', fmt });
-    ws.getRow(r).height = Math.max(xH(label, 26), typeof v === 'string' ? xH(v, 106) : 22); r++;
-  };
-
-  sec('一、保單資料');
-  info('產品', c.prod.name);
-  info('保費繳付期', c.t.term);
-  info('保單貨幣', (CUR_NAME[cur] || cur) + '（' + cur + '）');
-  info('保費金額', c.P, F.f2);
-  info('每年保費徵費', r2(c.levy), F.f2);
-  info('繳費安排', xPay(c));
-  if (c.pre) {
-    info('預繳保證年利率', c.pre.rate + '%');
-    info('投保時一次性支付（保費，未計徵費及優惠）', c.pre.upfront, F.f0);
-  }
-  const per = c.warns.concat(c.period ? [c.period] : []).join('；');
-  if (per) info('推廣期', per);
-
-  sec('二、優惠明細');
-  xCell(ws, r, 1, 2, '優惠項目', XHEAD); xCell(ws, r, 3, 3, '優惠幅度', XHEAD); xCell(ws, r, 4, 5, '優惠金額', XHEAD);
-  ws.getRow(r).height = 26; r++;
-  const item = (name, tag, amt, tot) => {
-    const o = tot ? { bold: true, fill: XC.soft } : {};
-    xCell(ws, r, 1, 2, name, Object.assign({ align: 'left' }, o, { bold: true }));
-    xCell(ws, r, 3, 3, tag, o);
-    xCell(ws, r, 4, 5, amt, Object.assign({ fmt: F.f0 }, o, { bold: true }));
-    ws.getRow(r).height = Math.max(tot ? 26 : 22, xH(name, 48), xH(tag, 46)); r++;
-  };
-  item(c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt);
-  item('配搭指定產品額外優惠', c.ext + c.unit, c.extAmt);
-  item((p.oName && p.oName !== '其他優惠') ? '其他優惠｜' + p.oName : '其他優惠', c.oP + '%', c.otherAmt);
-  if (c.couponAmt) item('電子保費現金券', '現金券', c.couponAmt);
-  if (c.pre) item('預繳優惠利息', '預繳' + c.pre.n + '年・保證年利率 ' + c.pre.rate + '%', c.pre.tot);
-  item('總優惠金額', '總優惠百分比 ' + c.pctTxt, c.totDed, true);
-
-  sec('三、每年實繳保費');
-  TH.forEach((t, k) => xCell(ws, r, k + 1, k + 1, t, XHEAD));
-  ws.getRow(r).height = 34; r++;
-  c.disp.forEach((row, k) => {
-    const multi = row.items.length > 1, z = k % 2 ? XC.light : undefined;
-    const det = row.items.length ? row.items.map((x, j) => (multi ? (j + 1) + '. ' : '') + x.label + '：-' + f0(x.amt)).join('\n') : '/';
-    xCell(ws, r, 1, 1, row.label, { bold: true, fill: z });
-    xCell(ws, r, 2, 2, r2(row.orig), { fmt: F.f2, fill: z });
-    xCell(ws, r, 3, 3, det, { fill: z });
-    xCell(ws, r, 4, 4, row.ded ? -row.ded : '/', { fmt: F.neg, bold: true, color: row.ded ? XC.red : XC.navy, fill: z });
-    xCell(ws, r, 5, 5, r2(row.net), { fmt: F.f2, bold: true, fill: XC.pay, color: XC.payTxt });
-    ws.getRow(r).height = Math.max(24, xH(row.label, 26), xH(det, 46)); r++;
-  });
-  const T = { bold: true, fill: XC.soft };
-  xCell(ws, r, 1, 1, c.lifelong ? '首5年合計' : '總計', T);
-  xCell(ws, r, 2, 2, r2(c.totOrig), Object.assign({ fmt: F.f2 }, T));
-  xCell(ws, r, 3, 3, '', T);
-  xCell(ws, r, 4, 4, -c.totDed, Object.assign({ fmt: F.neg }, T, { color: XC.red }));
-  xCell(ws, r, 5, 5, r2(c.totNet), Object.assign({ fmt: F.f2 }, T, { color: XC.payTxt }));
-  ws.getRow(r).height = 28; r++;
-  if (c.pre) {
-    const nt = '註：預繳優惠利息實際是存入保單的現金儲備金戶口，上表為方便比較，按年列作扣減。各年利息向下取整，總計按未取整利息計算，故與各年相加可能相差 1 至 2 元。';
-    xCell(ws, r, 1, 5, nt, { size: 9, italic: true, color: XC.mut, align: 'left', noBorder: true });
-    ws.getRow(r).height = xH(nt, W); r++;
-  }
-
-  if (c.summary) {
-    sec('四、優惠摘要');
-    c.summary.split('\n').forEach(l => {
-      const b = l.indexOf('✅') === 0 || l.indexOf('【') === 0;
-      xCell(ws, r, 1, 5, l, { align: 'left', bold: b });
-      ws.getRow(r).height = xH(l, W); r++;
-    });
-  }
-  r++;
-  xCell(ws, r, 1, 5, DISCLAIMER, { size: 9, italic: true, color: XC.mut, align: 'left', noBorder: true });
-  ws.getRow(r).height = 22;
-}
-
-$('exp').addEventListener('click', async () => {
-  if (!window.ExcelJS) { alert('Excel 元件未能載入，請檢查網絡後重新整理頁面再試。'); return; }
-  if (!plans.length) { alert('請先新增方案。'); return; }
-  const b = $('exp'), old = b.textContent;
-  b.textContent = '匯出中…';
-  try {
-    const wb = new ExcelJS.Workbook();
-    const F = xFmt(), sub = '製表日期：' + xToday() + '　｜　優惠規則：' + (R.version || '');
-    xCompare(wb, F, sub);
-    plans.forEach((p, i) => xPlan(wb, p, i, F, sub));
-    const buf = await wb.xlsx.writeBuffer();
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    a.download = '保費優惠計算.xlsx';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-  } catch (e) { alert('匯出失敗：' + e.message); }
-  b.textContent = old;
-});
-
-// ---------- 啟動 ----------
-plans.push(newPlan({ name: '方案1：預繳', prem: '100,000', prepay: true }));
-plans.push(newPlan({ name: '方案2：不預繳', prem: '100,000' }));
-renderHead(); renderPlans();
-// 如同一資料夾有 rules.json，自動採用（每期只需更換該檔案）
-fetch('rules.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j) setRules(j, '已載入 rules.json。'); }).catch(() => {});
-</script>
-</body>
-</html>
+  loadFiles();
+  </script>
+  </body>
+  </html>
