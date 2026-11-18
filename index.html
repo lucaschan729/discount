@@ -523,14 +523,17 @@
     renderHead(); renderPlans();
     $('rulesMsg').textContent = msg || '';
   }
-  // 把保費回贈檔（有 products）或預繳優惠檔（有 options）合併到現有規則
+  // 分辨規則檔類型：預繳優惠檔最外層有 options（它的 products 只是適用產品清單）；保費回贈檔最外層有 products 而沒有 options
+  const isPrepayFile = j => !!j && Array.isArray(j.options);
+  const isRebateFile = j => !!j && !Array.isArray(j.options) && Array.isArray(j.products);
+  // 把保費回贈檔或預繳優惠檔合併到現有規則
   function mergeRules(base, j) {
     const o = JSON.parse(JSON.stringify(base));
-    if (j && Array.isArray(j.products)) {
+    if (isPrepayFile(j)) o.prepay = j;
+    else if (isRebateFile(j)) {
       o.version = j.version; o.fx = j.fx; o.levy = j.levy; o.products = j.products;
       if (j.prepay) o.prepay = j.prepay;
-    } else if (j && Array.isArray(j.options)) o.prepay = j;
-    else throw new Error('不是保費回贈或預繳優惠的規則檔');
+    } else throw new Error('不是保費回贈或預繳優惠的規則檔');
     return o;
   }
   function dlJson(name, obj) {
@@ -560,8 +563,8 @@
     try {
       const j = JSON.parse(await f.text());
       setRules(mergeRules(R, j), '已匯入 ' + f.name + '。');
-      if (Array.isArray(j.products)) SRC.rebate = f.name;
-      if (Array.isArray(j.options) || j.prepay) SRC.prepay = f.name;
+      if (isRebateFile(j)) SRC.rebate = f.name;
+      if (isPrepayFile(j) || (isRebateFile(j) && j.prepay)) SRC.prepay = f.name;
       renderHead();
     } catch (e) { $('rulesMsg').textContent = '匯入失敗：' + e.message; }
     ev.target.value = '';
@@ -782,8 +785,8 @@
         SRC[key] = name;
       } catch (e) { errs.push(name + '：' + e.message); }
     };
-    use('rebate.json', res[0], 'rebate', j => Array.isArray(j.products));
-    use('prepay.json', res[1], 'prepay', j => Array.isArray(j.options));
+    use('rebate.json', res[0], 'rebate', isRebateFile);
+    use('prepay.json', res[1], 'prepay', isPrepayFile);
     renderHead();
     if (errs.length) {
       const m = $('loadMsg');
