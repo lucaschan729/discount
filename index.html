@@ -16,7 +16,10 @@
     header p{margin:0;color:#cbd5e1;font-size:13px;line-height:1.8}
     main{max-width:1100px;margin:-44px auto 0;padding:0 16px 20px}
     section{background:#fff;border-radius:18px;padding:22px;margin-bottom:20px;box-shadow:0 10px 30px rgba(15,23,42,.07);border:1px solid rgba(226,232,240,.8)}
-    section.plan{border-top:4px solid var(--gold2)}
+    section.plan{border-top:4px solid var(--gold2);scroll-margin-top:14px}
+    @keyframes planIn{from{opacity:0;transform:translateY(24px) scale(.98)}to{opacity:1;transform:none}}
+    @keyframes planGlow{0%{box-shadow:0 0 0 0 rgba(245,158,11,.7),0 10px 30px rgba(15,23,42,.07)}60%{box-shadow:0 0 0 10px rgba(245,158,11,.25),0 10px 30px rgba(15,23,42,.07)}100%{box-shadow:0 0 0 16px rgba(245,158,11,0),0 10px 30px rgba(15,23,42,.07)}}
+    section.plan.fresh{animation:planIn .5s ease-out,planGlow 1.8s ease-out}
     h2{margin:0 0 14px;font-size:18px}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
     label{font-size:12px;color:var(--mut);font-weight:600}
@@ -25,7 +28,8 @@
     input[type=text]:focus,select:focus,textarea:focus{outline:0;border-color:var(--gold2);background:#fff;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
     input.pname{font-size:20px;font-weight:800;color:var(--navy);flex:1;min-width:160px;background:transparent;border-color:transparent;padding-left:4px}
     .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
-    .btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:0;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(217,119,6,.25)}
+    .btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:0;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(217,119,6,.25);transition:transform .12s}
+    .btn:active{transform:scale(.95)}
     .btn.alt{background:#fff;color:var(--navy2);border:1px solid var(--line);box-shadow:none}
     .btn.dark{background:var(--navy);box-shadow:0 4px 12px rgba(15,23,42,.25)}
     .btn.sm{padding:7px 14px;font-size:13px}
@@ -40,7 +44,7 @@
     .card.hi small{color:#cbd5e1}
     .card.hi b{color:var(--gold2)}
     .bd{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:16px 0}
-    .bd-h{background:#f8fafc;padding:10px 16px;font-size:13px;font-weight:700;color:var(--mut);border-bottom:1px solid var(--line)}
+    .bd-h{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc;padding:8px 12px 8px 16px;font-size:13px;font-weight:700;color:var(--mut);border-bottom:1px solid var(--line)}
     .bdt{width:100%;border-collapse:collapse}
     .bdt td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
     .bdt td:first-child{padding-left:16px}
@@ -56,6 +60,7 @@
     .warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
     .th-bar{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px}
     .th-bar b{font-size:15px}
+    .th-bar h2{margin:0}
     .scroll{overflow:auto;border:1px solid var(--line);border-radius:14px}
     .tbl{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;font-size:14px}
     .tbl th{background:var(--navy2);color:#fff;padding:13px 10px;text-align:center;font-weight:600;line-height:1.5}
@@ -96,7 +101,10 @@
     <div id="plans"></div>
 
     <section>
-      <h2>方案比較</h2>
+      <div class="th-bar" style="margin:0 0 14px">
+        <h2>方案比較</h2>
+        <button class="btn alt sm" id="cpCmp">複製對比</button>
+      </div>
       <div class="scroll"><table id="cmp" class="tbl"></table></div>
     </section>
 
@@ -130,6 +138,7 @@
   const CUR_NAME = { 'US$': '美元', 'HK$': '港元' };
   const NUMS = '一二三四五六七八九十';
   const TH = ['保單年度', '原保費（包括保費徵費）', '優惠／回贈詳情', '扣減金額（整數）', '實繳保費'];
+  const CH = ['方案', '產品', '保費金額', '總原保費', '總優惠', '實繳總額', '總優惠百分比'];
   const DISCLAIMER = '本文件只供參考，優惠以保險公司最新公佈的條款及細則和最終批核為準。';
 
   // ---------- 內置優惠規則（後備；正常情況由 rebate.json 及 prepay.json 取代）----------
@@ -365,6 +374,28 @@
     return body;
   }
 
+  // 優惠明細的資料（畫面及複製共用）：[名稱, 幅度, 金額, 是否總計]
+  function bdRows(p, c) {
+    const oName = (p.oName && p.oName !== '其他優惠') ? '其他優惠｜' + p.oName : '其他優惠';
+    const a = [
+      [c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt],
+      ['配搭指定產品額外優惠', c.ext + c.unit, c.extAmt],
+      [oName, c.oP + '%', c.otherAmt]
+    ];
+    if (c.couponAmt) a.push(['電子保費現金券', '現金券', c.couponAmt]);
+    if (c.pre) a.push(['預繳優惠利息', '預繳' + c.pre.n + '年・年利率 ' + c.pre.rate + '%', c.pre.tot]);
+    a.push(['總優惠金額', c.pctTxt, c.totDed, true]);
+    return a;
+  }
+
+  // 方案比較的資料（畫面及複製共用）
+  function cmpRows() {
+    return plans.map(p => {
+      const c = calc(p);
+      return [p.name, c.prod.name + '（' + c.t.term + (c.pre ? '，預繳' + c.pre.n + '年' : '') + '）', f0(c.P), f2(c.totOrig), '-' + f0(c.totDed), f2(c.totNet), c.pctTxt];
+    });
+  }
+
   // ---------- 畫面 ----------
   function planHtml(p, i) {
     const prod = getProd(p), t = getTerm(p), canPre = prepayOK(p);
@@ -404,15 +435,9 @@
       (c.pre ? '<div class="card"><small>投保時一次性支付（保費，未計徵費及優惠）</small><b>' + cur + f0(c.pre.upfront) + '</b></div>' : '') + '</div>';
 
     // 優惠明細：固定三欄（名稱靠左、幅度置中、金額靠右），每行對齊
-    const row = (name, tag, amt, tot) => '<tr' + (tot ? ' class="btot"' : '') + '><td class="bname">' + name + '</td><td class="bt"><span class="btag">' + tag + '</span></td><td class="bamt">' + cur + f0(amt) + '</td></tr>';
-    const oName = (p.oName && p.oName !== '其他優惠') ? '其他優惠｜' + esc(p.oName) : '其他優惠';
-    h += '<div class="bd"><div class="bd-h">優惠明細</div><table class="bdt"><tbody>' +
-      row(c.upfrontMode ? '保費折扣' : '基本回贈', c.base + c.unit, c.baseAmt) +
-      row('配搭指定產品額外優惠', c.ext + c.unit, c.extAmt) +
-      row(oName, c.oP + '%', c.otherAmt) +
-      (c.couponAmt ? row('電子保費現金券', '現金券', c.couponAmt) : '') +
-      (c.pre ? row('預繳優惠利息', '預繳' + c.pre.n + '年・年利率 ' + c.pre.rate + '%', c.pre.tot) : '') +
-      row('總優惠金額', c.pctTxt, c.totDed, true) + '</tbody></table></div>';
+    h += '<div class="bd"><div class="bd-h"><span>優惠明細</span><button class="btn alt sm" data-act="cpb" data-i="' + i + '">複製明細</button></div><table class="bdt"><tbody>' +
+      bdRows(p, c).map(x => '<tr' + (x[3] ? ' class="btot"' : '') + '><td class="bname">' + esc(x[0]) + '</td><td class="bt"><span class="btag">' + esc(x[1]) + '</span></td><td class="bamt">' + esc(cur) + f0(x[2]) + '</td></tr>').join('') +
+      '</tbody></table></div>';
 
     const body = tableRows(c);
     h += '<div class="th-bar"><b>每年實繳保費</b><button class="btn alt sm" data-act="cpt" data-i="' + i + '">複製表格</button></div>';
@@ -428,11 +453,10 @@
   }
 
   function renderCmp() {
-    let h = '<thead><tr><th>方案</th><th>產品</th><th>保費金額</th><th>總原保費</th><th>總優惠</th><th>實繳總額</th><th>總優惠百分比</th></tr></thead><tbody>';
-    plans.forEach(p => {
-      const c = calc(p);
-      h += '<tr><td class="yr">' + esc(p.name) + '</td><td>' + esc(c.prod.name) + '（' + esc(c.t.term) + (c.pre ? '，預繳' + c.pre.n + '年' : '') + '）</td><td>' + f0(c.P) + '</td><td>' + f2(c.totOrig) +
-        '</td><td class="ded">-' + f0(c.totDed) + '</td><td class="pay">' + f2(c.totNet) + '</td><td>' + c.pctTxt + '</td></tr>';
+    let h = '<thead><tr>' + CH.map(x => '<th>' + x + '</th>').join('') + '</tr></thead><tbody>';
+    cmpRows().forEach(r => {
+      h += '<tr><td class="yr">' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td>' + r[2] + '</td><td>' + r[3] +
+        '</td><td class="ded">' + r[4] + '</td><td class="pay">' + r[5] + '</td><td>' + r[6] + '</td></tr>';
     });
     $('cmp').innerHTML = h + '</tbody>';
   }
@@ -441,6 +465,15 @@
     $('plans').innerHTML = plans.map(planHtml).join('');
     plans.forEach((p, i) => renderRes(i));
     renderCmp();
+  }
+
+  // 新增或複製方案後：捲動到該方案，並播放淡入及金色光暈效果
+  function focusPlan(i) {
+    const el = $('plans').children[i];
+    if (!el) return;
+    el.classList.add('fresh');
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { el.scrollIntoView(); }
+    setTimeout(() => el.classList.remove('fresh'), 1900);
   }
 
   function renderHead() {
@@ -457,19 +490,37 @@
     pr.then(() => { b.textContent = '已複製 ✓'; setTimeout(() => { b.textContent = old; }, 1500); })
       .catch(() => alert('未能自動複製，請長按內容手動選取。'));
   }
+  // 同時放入表格（貼到 Notion／Excel）及純文字（貼到 WhatsApp）兩種格式
+  function clip(html, text) {
+    try {
+      if (navigator.clipboard && window.ClipboardItem)
+        return navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]);
+      if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    } catch (e) {}
+    return Promise.reject();
+  }
   function copyTable(i, b) {
     const c = calc(plans[i]), body = tableRows(c);
     const tsv = [TH.join('\t')].concat(body.map(r => [r[0], r[1], r[2].join('；'), r[3].join('；'), r[4]].join('\t'))).join('\n');
     const html = '<table><thead><tr>' + TH.map(x => '<th>' + esc(x) + '</th>').join('') + '</tr></thead><tbody>' +
       body.map(r => '<tr><td>' + esc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2].map(esc).join('<br>') + '</td><td>' + r[3].map(esc).join('<br>') + '</td><td>' + r[4] + '</td></tr>').join('') + '</tbody></table>';
-    let pr;
-    try {
-      if (navigator.clipboard && window.ClipboardItem)
-        pr = navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([tsv], { type: 'text/plain' }) })]);
-      else if (navigator.clipboard && navigator.clipboard.writeText) pr = navigator.clipboard.writeText(tsv);
-      else pr = Promise.reject();
-    } catch (e) { pr = Promise.reject(); }
-    done(b, pr, '複製表格');
+    done(b, clip(html, tsv), '複製表格');
+  }
+  function copyBd(i, b) {
+    const p = plans[i], rows = bdRows(p, calc(p));
+    const text = [p.name + '｜優惠明細'].concat(rows.map(x => (x[3] ? '✅ ' : '') + x[0] + '（' + x[1] + '）：' + cur + f0(x[2]))).join('\n');
+    const html = '<table><thead><tr><th>優惠項目</th><th>優惠幅度</th><th>優惠金額</th></tr></thead><tbody>' +
+      rows.map(x => '<tr><td>' + esc(x[0]) + '</td><td>' + esc(x[1]) + '</td><td>' + esc(cur) + f0(x[2]) + '</td></tr>').join('') + '</tbody></table>';
+    done(b, clip(html, text), '複製明細');
+  }
+  function copyCmp(b) {
+    if (!plans.length) { alert('請先新增方案。'); return; }
+    const rows = cmpRows();
+    const text = ['方案比較（' + cur + '）'].concat(rows.map(r =>
+      '\n' + r[0] + '｜' + r[1] + '\n' + CH.slice(2).map((t, k) => t + '：' + r[k + 2]).join('\n'))).join('\n');
+    const html = '<table><thead><tr>' + CH.map(x => '<th>' + x + '</th>').join('') + '</tr></thead><tbody>' +
+      rows.map(r => '<tr>' + r.map(x => '<td>' + esc(x) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+    done(b, clip(html, text), '複製對比');
   }
 
   // ---------- 事件 ----------
@@ -496,17 +547,19 @@
     const b = ev.target.closest('[data-act]'); if (!b) return;
     const i = +b.dataset.i, act = b.dataset.act;
     if (act === 'cpt') { copyTable(i, b); return; }
+    if (act === 'cpb') { copyBd(i, b); return; }
     if (act === 'cp') {
       const txt = plans[i].name + '\n' + calc(plans[i]).summary;
       const pr = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(txt) : Promise.reject();
       done(b, pr, '複製文字');
       return;
     }
-    if (act === 'del') plans.splice(i, 1);
-    else { const cp = JSON.parse(JSON.stringify(plans[i])); cp.name += '（副本）'; plans.splice(i + 1, 0, cp); }
-    renderPlans();
+    if (act === 'del') { plans.splice(i, 1); renderPlans(); return; }
+    const cp = JSON.parse(JSON.stringify(plans[i])); cp.name += '（副本）'; plans.splice(i + 1, 0, cp);
+    renderPlans(); focusPlan(i + 1);
   });
-  $('addPlan').addEventListener('click', () => { plans.push(newPlan()); renderPlans(); });
+  $('addPlan').addEventListener('click', () => { plans.push(newPlan()); renderPlans(); focusPlan(plans.length - 1); });
+  $('cpCmp').addEventListener('click', () => copyCmp($('cpCmp')));
   $('cur').addEventListener('change', () => { cur = $('cur').value; renderPlans(); });
 
   // ---------- 規則更新 ----------
