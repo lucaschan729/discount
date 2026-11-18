@@ -1,0 +1,11 @@
+{
+ "version": "預繳保費保證優惠息率（2026年11月）",
+ "end": "2026-11-30",
+ "products": ["yingyu", "huanyu", "caifu"],
+ "termYears": 5,
+ "currencies": ["US$"],
+ "options": [
+  { "n": 1, "tiers": [[0, 4.8]] },
+  { "n": 4, "tiers": [[0, 4.3], [200000, 4.5]] }
+ ]
+}
