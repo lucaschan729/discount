@@ -6,8 +6,6 @@
   <meta name="theme-color" content="#0f172a">
   <title>保費優惠計算器</title>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
   <style>
     :root{--navy:#0f172a;--navy2:#1e293b;--gold:#d97706;--gold2:#f59e0b;--soft:#fffbeb;--line:#e2e8f0;--mut:#64748b;--bg:#eef2f7;--red:#dc2626}
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -97,7 +95,7 @@
     footer{font-size:12px;color:var(--mut);text-align:center;padding:6px 20px 34px}
     @media(max-width:600px){header h1{font-size:25px}section{padding:16px}}
 
-    /* ===== PDF 範本（畫面外渲染；直向 794×1123px，橫向 1123×794px） ===== */
+    /* ===== PDF 範本（平時放在畫面外；列印時才顯示。直向 794×1123px，橫向 1123×794px） ===== */
     #pdfWrap{position:absolute;left:-10000px;top:0}
     .pp,.pm{font-family:"PingFang HK","Microsoft JhengHei","Noto Sans TC","Heiti TC",sans-serif;line-height:1.45;color:#0f172a}
     .pp{width:794px;height:1123px;background:#fff;display:flex;flex-direction:column;overflow:hidden}
@@ -149,6 +147,19 @@
     .pp-sum .t{font-weight:700;color:#b45309}
     .pp-sum .tt{font-weight:700;font-size:13px;margin-top:5px;padding-top:5px;border-top:1px dashed #cbd5e1}
     .pp-note{font-size:9.5px;color:#64748b;line-height:1.5;margin-top:6px}
+
+    /* ===== 列印（向量 PDF）：只顯示 #pdfWrap 內的頁面 ===== */
+    @media print{
+      @page{size:A4 portrait;margin:0}
+      @page land{size:A4 landscape;margin:0}
+      html,body{margin:0!important;padding:0!important;background:#fff!important}
+      body>*:not(#pdfWrap){display:none!important}
+      #pdfWrap{position:static!important}
+      #pdfWrap .pp{width:210mm;height:296mm;break-after:page;page-break-after:always;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      #pdfWrap .pp.ls{width:297mm;height:209mm;page:land}
+      #pdfWrap .pp:last-child{break-after:auto;page-break-after:auto}
+      #pdfWrap.fit .pp.ls{page:auto;zoom:.7}
+    }
   </style>
   </head>
   <body>
@@ -939,8 +950,8 @@
     b.textContent = old;
   });
 
-  // ---------- 匯出 PDF ----------
-  // 做法：把每一頁排成 A4 尺寸的 HTML（畫面外），用 html2canvas 轉成高清圖片，再用 jsPDF 合成 PDF。
+  // ---------- 匯出 PDF（向量）----------
+  // 做法：把每一頁排成 A4 尺寸的 HTML 放進 #pdfWrap，再用瀏覽器列印功能「另存為 PDF」；文字為向量，放大仍然清晰。
   // 每個方案為直向頁；方案對比（兩個方案或以上）為橫向頁，放在最前。
   const pSec = t => '<div class="pp-sec">' + esc(t) + '</div>';
 
@@ -1035,24 +1046,21 @@
     (p.sub ? '<div class="pp-subt">' + esc(p.sub) + '</div>' : '') + '</div><div class="pp-date"><small>製表日期</small><b>' + xToday() + '</b><small>貨幣：' + esc((CUR_NAME[cur] || cur) + '（' + cur + '）') + '</small></div></div>' +
     '<div class="pp-gold"></div><div class="pp-body">' + p.body + '</div><div class="pp-foot"><span>＊' + DISCLAIMER + '<br>優惠規則：' + esc(verTxt()) + '</span><span>第 ' + n + ' / ' + N + ' 頁</span></div></div>';
 
-  // 手機（觸控裝置）開啟分享選單；電腦直接下載
-  async function deliver(blob, name, type) {
-    try {
-      const f = new File([blob], name, { type });
-      if (window.matchMedia && matchMedia('(pointer:coarse)').matches && navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; }
-    } catch (e) { if (e && e.name === 'AbortError') return; }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  // 把所有頁面放進 #pdfWrap，再開啟瀏覽器列印視窗（網頁標題暫時改成檔案名稱，列印後還原）
+  function printPdf(html, title) {
+    const wrap = $('pdfWrap'), old = document.title, ua = navigator.userAgent;
+    // Safari／iPhone 不支援直向橫向混合，橫向頁改為縮小放在直向頁
+    wrap.className = (/iP(hone|ad|od)/.test(ua) || (/Safari/.test(ua) && !/Chrome|Chromium|Android/.test(ua))) ? 'fit' : '';
+    wrap.innerHTML = html;
+    document.title = title;
+    const back = () => { document.title = old; window.removeEventListener('afterprint', back); };
+    window.addEventListener('afterprint', back);
+    setTimeout(() => window.print(), 150);
   }
 
-  $('pdf').addEventListener('click', async () => {
-    if (!window.html2canvas || !window.jspdf) { alert('PDF 元件未能載入，請檢查網絡後重新整理頁面再試。'); return; }
+  $('pdf').addEventListener('click', () => {
     if (!plans.length) { alert('請先新增方案。'); return; }
     if (!plans.some(p => num(p.prem) > 0)) { alert('請先輸入保費金額。'); return; }
-    const b = $('pdf'), old = b.textContent, wrap = $('pdfWrap');
-    b.disabled = true; b.textContent = '準備中…';
     try {
       const P = [];
       if (plans.length > 1) pFlow(pCmpBlocks(), true).forEach(body => P.push({ ls: true, title: '保費優惠方案對比', sub: '共 ' + plans.length + ' 個方案', body }));
@@ -1060,19 +1068,9 @@
         const c = calc(p);
         pFlow(pPlanBlocks(p, c), false).forEach(body => P.push({ title: p.name || '方案' + (i + 1), sub: c.prod.name + '（' + c.t.term + '）', body }));
       });
-      let pdf = null;
-      for (let k = 0; k < P.length; k++) {
-        b.textContent = '生成中 ' + (k + 1) + '/' + P.length + '…';
-        wrap.innerHTML = pPage(P[k], k + 1, P.length);
-        const cv = await html2canvas(wrap.firstChild, { scale: 2, backgroundColor: '#ffffff', windowWidth: 1200 });
-        const o = P[k].ls ? 'landscape' : 'portrait';
-        if (!pdf) pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: o }); else pdf.addPage('a4', o);
-        pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, P[k].ls ? 297 : 210, P[k].ls ? 210 : 297);
-      }
       const fn = (plans.length === 1 ? '保費優惠方案_' + (plans[0].name || '方案1') : '保費優惠方案（' + plans.length + ' 個方案）').replace(/[\\/:*?"<>|]/g, '_');
-      await deliver(pdf.output('blob'), fn + '.pdf', 'application/pdf');
+      printPdf(P.map((p, k) => pPage(p, k + 1, P.length)).join(''), fn);
     } catch (e) { alert('匯出失敗：' + e.message); }
-    wrap.innerHTML = ''; b.disabled = false; b.textContent = old;
   });
 
   // ---------- 啟動 ----------
