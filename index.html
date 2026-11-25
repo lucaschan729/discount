@@ -3,54 +3,65 @@
   <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
   <title>保費優惠計算器</title>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
   <style>
-    :root{--navy:#0f172a;--navy2:#1e293b;--gold:#d97706;--gold2:#f59e0b;--soft:#fffbeb;--line:#e2e8f0;--mut:#64748b;--bg:#f1f5f9;--red:#dc2626}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--navy);-webkit-font-smoothing:antialiased}
-    header{background:radial-gradient(circle at 85% 0%,#334155 0%,transparent 55%),linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:40px 20px 70px}
-    .hd{max-width:1100px;margin:0 auto}
-    .eyebrow{display:inline-block;font-size:12px;letter-spacing:2px;color:var(--gold2);border:1px solid rgba(245,158,11,.5);border-radius:999px;padding:4px 12px;margin-bottom:14px}
-    header h1{margin:0 0 8px;font-size:30px;letter-spacing:1px}
+    :root{--navy:#0f172a;--navy2:#1e293b;--gold:#d97706;--gold2:#f59e0b;--soft:#fffbeb;--line:#e2e8f0;--mut:#64748b;--bg:#eef2f7;--red:#dc2626}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{margin:0;font-family:-apple-system,"PingFang HK","Microsoft JhengHei","Noto Sans TC",sans-serif;background:var(--bg);color:var(--navy);-webkit-font-smoothing:antialiased}
+    header{position:relative;overflow:hidden;background:radial-gradient(circle at 85% 0%,rgba(245,158,11,.28),transparent 45%),linear-gradient(135deg,#0b1222,#1e293b 60%,#2b3a52);color:#fff;padding:46px 20px 80px}
+    header::before{content:"";position:absolute;right:-80px;top:-90px;width:260px;height:260px;border-radius:50%;border:38px solid rgba(245,158,11,.14)}
+    header::after{content:"";position:absolute;left:-60px;bottom:-110px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.04)}
+    .hd{max-width:1100px;margin:0 auto;position:relative;z-index:1}
+    .eyebrow{display:inline-block;font-size:11px;letter-spacing:3px;color:#fcd34d;border:1px solid rgba(245,158,11,.5);border-radius:999px;padding:4px 14px;margin-bottom:14px}
+    header h1{margin:0 0 10px;font-size:32px;letter-spacing:2px}
     header p{margin:0;color:#cbd5e1;font-size:13px;line-height:1.8}
-    main{max-width:1100px;margin:-44px auto 0;padding:0 16px 20px}
-    section{background:#fff;border-radius:18px;padding:22px;margin-bottom:20px;box-shadow:0 10px 30px rgba(15,23,42,.07);border:1px solid rgba(226,232,240,.8)}
+    main{max-width:1100px;margin:-48px auto 0;padding:0 16px 20px;position:relative;z-index:1}
+    section{background:#fff;border-radius:20px;padding:24px;margin-bottom:20px;box-shadow:0 10px 30px rgba(15,23,42,.07);border:1px solid rgba(226,232,240,.8)}
     section.plan{border-top:4px solid var(--gold2)}
     section.plan,#cmpSec{scroll-margin-top:76px}
     @keyframes planIn{from{opacity:0;transform:translateY(24px) scale(.98)}to{opacity:1;transform:none}}
     @keyframes planGlow{0%{box-shadow:0 0 0 0 rgba(245,158,11,.7),0 10px 30px rgba(15,23,42,.07)}60%{box-shadow:0 0 0 10px rgba(245,158,11,.25),0 10px 30px rgba(15,23,42,.07)}100%{box-shadow:0 0 0 16px rgba(245,158,11,0),0 10px 30px rgba(15,23,42,.07)}}
     section.plan.fresh{animation:planIn .5s ease-out,planGlow 1.8s ease-out}
     section.plan.ping{animation:planGlow 1.8s ease-out}
-    .nav{position:-webkit-sticky;position:sticky;top:0;z-index:30;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px 12px;margin:0 0 20px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 18px rgba(15,23,42,.1)}
+    .nav{position:-webkit-sticky;position:sticky;top:0;z-index:30;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px 12px;margin:0 0 20px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 22px rgba(15,23,42,.12)}
     .nav:empty{display:none}
     .chip{flex:0 0 auto;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--line);background:#f8fafc;color:var(--navy2);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:.15s}
     .chip.cmp{background:#fef3c7;border-color:#fde68a;color:#92400e}
-    .chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
-    h2{margin:0 0 14px;font-size:18px}
+    .chip.on{background:linear-gradient(135deg,#0f172a,#334155);border-color:transparent;color:#fff;box-shadow:inset 0 -3px 0 var(--gold2)}
+    h2{margin:0 0 14px;font-size:18px;display:flex;align-items:center;gap:9px}
+    h2::before{content:"";width:5px;height:18px;border-radius:3px;background:linear-gradient(var(--gold2),var(--gold))}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
     label{font-size:12px;color:var(--mut);font-weight:600}
     .grid label{display:block;margin-bottom:5px}
-    input[type=text],select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;background:#f8fafc;color:var(--navy);transition:.15s}
-    input[type=text]:focus,select:focus,textarea:focus{outline:0;border-color:var(--gold2);background:#fff;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
-    input.pname{font-size:20px;font-weight:800;color:var(--navy);flex:1;min-width:160px;background:transparent;border-color:transparent;padding-left:4px}
+    input[type=text],select,textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:11px;font-size:14px;font-family:inherit;background:#f8fafc;color:var(--navy);transition:.15s}
+    input[type=text]:focus,select:focus,textarea:focus{outline:0;border-color:var(--gold2);background:#fff;box-shadow:0 0 0 4px rgba(245,158,11,.18)}
+    input.pname{font-size:21px;font-weight:800;color:var(--navy);flex:1;min-width:160px;background:transparent;border-color:transparent;padding-left:4px}
+    input.pname:hover{border-color:var(--line)}
     .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
-    .btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:0;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(217,119,6,.25);transition:transform .12s}
+    .btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:0;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(217,119,6,.28);transition:transform .12s,opacity .2s}
     .btn:active{transform:scale(.95)}
+    .btn:disabled{opacity:.6;cursor:wait}
     .btn.alt{background:#fff;color:var(--navy2);border:1px solid var(--line);box-shadow:none}
-    .btn.dark{background:var(--navy);box-shadow:0 4px 12px rgba(15,23,42,.25)}
+    .btn.alt:hover{border-color:var(--navy2)}
+    .btn.dark{background:linear-gradient(135deg,#0f172a,#334155);box-shadow:0 4px 12px rgba(15,23,42,.28)}
     .btn.sm{padding:7px 14px;font-size:13px}
     .checks{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
-    .checks label{font-size:13px;color:var(--navy2);font-weight:500;background:#f8fafc;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
+    .checks label{font-size:13px;color:var(--navy2);font-weight:500;background:#f8fafc;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;transition:.15s}
+    .checks label:hover{border-color:var(--gold2);background:var(--soft)}
     .checks input{accent-color:#d97706;margin-right:4px}
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin:16px 0}
-    .card{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+    .card{background:#f8fafc;border:1px solid var(--line);border-radius:16px;padding:15px 17px;transition:.15s}
+    .card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,23,42,.09)}
     .card small{color:var(--mut);font-size:12px;font-weight:600}
-    .card b{display:block;font-size:21px;margin-top:6px}
-    .card.hi{background:linear-gradient(135deg,#0f172a,#1e293b);border-color:transparent}
+    .card b{display:block;font-size:22px;margin-top:6px;letter-spacing:.3px}
+    .card.hi{background:linear-gradient(135deg,#0f172a,#334155);border-color:transparent;box-shadow:inset 0 3px 0 var(--gold2)}
     .card.hi small{color:#cbd5e1}
-    .card.hi b{color:var(--gold2)}
-    .bd{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:16px 0}
+    .card.hi b{color:#fcd34d}
+    .bd{border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:16px 0}
     .bd-h{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc;padding:8px 12px 8px 16px;font-size:13px;font-weight:700;color:var(--mut);border-bottom:1px solid var(--line)}
     .bdt{width:100%;border-collapse:collapse}
     .bdt td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -63,12 +74,12 @@
     .btag{display:inline-block;font-size:12px;font-weight:700;color:#92400e;background:#fef3c7;border-radius:999px;padding:3px 10px}
     .bdt tr.btot td{background:var(--soft)}
     .bdt tr.btot td.bamt{color:var(--gold);font-size:19px}
-    .tip{background:var(--soft);border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
-    .warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
+    .tip{background:var(--soft);border:1px solid #fde68a;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:10px}
+    .warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:10px}
     .th-bar{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px}
     .th-bar b{font-size:15px}
     .th-bar h2{margin:0}
-    .scroll{overflow:auto;border:1px solid var(--line);border-radius:14px}
+    .scroll{overflow:auto;border:1px solid var(--line);border-radius:16px}
     .tbl{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;font-size:14px}
     .tbl th{background:var(--navy2);color:#fff;padding:13px 10px;text-align:center;font-weight:600;line-height:1.5}
     .tbl td{padding:13px 10px;text-align:center;vertical-align:middle;border-bottom:1px solid var(--line);line-height:1.7}
@@ -78,12 +89,66 @@
     .tbl tbody tr td.pay{background:#fff7ed;color:#9a3412;font-weight:800}
     .tbl tbody tr.tot td{background:#fef3c7;font-weight:800;border-top:2px solid var(--gold2);border-bottom:0}
     .note{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.7}
-    .sumbox{margin-top:18px;background:#f8fafc;border:1px solid var(--line);border-left:4px solid var(--gold2);border-radius:12px;padding:14px 16px}
+    .sumbox{margin-top:18px;background:#f8fafc;border:1px solid var(--line);border-left:4px solid var(--gold2);border-radius:14px;padding:14px 16px}
     .sumbox .bar{margin-bottom:6px;justify-content:space-between}
     .sumtxt{white-space:pre-wrap;font-size:14px;line-height:1.9}
     summary{cursor:pointer;font-weight:700;font-size:16px}
     textarea{height:260px;font-family:Menlo,Consolas,monospace;font-size:12px;margin:12px 0}
     footer{font-size:12px;color:var(--mut);text-align:center;padding:6px 20px 34px}
+    @media(max-width:600px){header h1{font-size:25px}section{padding:16px}}
+
+    /* ===== PDF 範本（畫面外渲染；直向 794×1123px，橫向 1123×794px） ===== */
+    #pdfWrap{position:absolute;left:-10000px;top:0}
+    .pp,.pm{font-family:"PingFang HK","Microsoft JhengHei","Noto Sans TC","Heiti TC",sans-serif;line-height:1.45;color:#0f172a}
+    .pp{width:794px;height:1123px;background:#fff;display:flex;flex-direction:column;overflow:hidden}
+    .pp.ls{width:1123px;height:794px}
+    .pm{width:702px}
+    .pm.ls{width:1031px}
+    .pb{padding-bottom:13px}
+    .pp-head{height:100px;flex:none;background:#0f172a;color:#fff;padding:0 46px;display:flex;justify-content:space-between;align-items:center;gap:24px}
+    .pp-hl{flex:1;min-width:0}
+    .pp-eye{font-size:10.5px;letter-spacing:3px;color:#fcd34d}
+    .pp-title{font-size:23px;font-weight:700;letter-spacing:1px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pp-subt{font-size:11px;color:#cbd5e1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pp-date{flex:none;text-align:right;border-left:3px solid #f59e0b;padding-left:14px}
+    .pp-date small{display:block;font-size:10.5px;color:#cbd5e1}
+    .pp-date b{display:block;font-size:16px}
+    .pp-gold{height:5px;flex:none;background:#f59e0b}
+    .pp-body{flex:1;padding:16px 46px 0;overflow:hidden}
+    .pp-foot{flex:none;height:50px;margin:0 46px;border-top:1px solid #cbd5e1;display:flex;justify-content:space-between;align-items:center;gap:16px;font-size:9px;color:#64748b;line-height:1.5}
+    .pp-foot span:last-child{flex:none;font-weight:700;color:#0f172a;font-size:9.5px}
+    .pp-cards{display:flex;gap:8px}
+    .pp-cards div{flex:1;height:66px;border:1px solid #e2e8f0;border-top:3px solid #0f172a;border-radius:8px;background:#f8fafc;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:0 6px}
+    .pp-cards div.hi{background:#fffbeb;border-color:#fcd34d;border-top-color:#b45309}
+    .pp-cards small{font-size:10px;color:#64748b}
+    .pp-cards b{font-size:17px;line-height:1.25;margin-top:2px}
+    .pp-cards .hi b{color:#b45309}
+    .pp-sec{font-size:13.5px;font-weight:700;line-height:22px;border-left:5px solid #f59e0b;padding-left:10px;margin:0 0 8px}
+    .pp-info{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #e2e8f0;border-left:1px solid #e2e8f0;font-size:11.5px}
+    .pp-info>div{display:flex;align-items:center;gap:10px;padding:5px 10px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
+    .pp-info>div.w{grid-column:1/3}
+    .pp-info small{flex:none;width:84px;font-size:10.5px;color:#64748b}
+    .pp-info b{font-weight:700}
+    .pp-t{width:100%;border-collapse:collapse;font-size:11.5px}
+    .pp-t th{background:#1e293b;color:#fff;font-weight:700;font-size:10.5px;padding:6px 8px;text-align:center;border:1px solid #fff;line-height:1.35}
+    .pp-t td{padding:5px 8px;text-align:center;border-bottom:1px solid #e2e8f0;line-height:1.5;vertical-align:middle}
+    .pp-t tr.z td{background:#f8fafc}
+    .pp-t td.l{text-align:left;font-weight:700}
+    .pp-t td.r{text-align:right}
+    .pp-t td.b{font-weight:700}
+    .pp-t td.d{color:#dc2626;font-weight:700}
+    .pp-t td.p{background:#fff7ed;color:#9a3412;font-weight:700}
+    .pp-t tr.tot td{background:#fef3c7;font-weight:700;border-top:2px solid #f59e0b}
+    .pp-t tr.tot td.g{color:#b45309;font-size:13.5px}
+    .pp-t td.h{background:#f1f5f9;text-align:left;font-weight:700}
+    .pp-t tr.tot td.h{background:#fef3c7}
+    .pp-t td small{font-size:10px;color:#64748b;font-weight:400}
+    .pp-tag{display:inline-block;font-size:10.5px;font-weight:700;color:#92400e;background:#fef3c7;border-radius:99px;padding:1px 9px}
+    .pp-t tr.tot .pp-tag{background:#fff}
+    .pp-sum{border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:8px;background:#f8fafc;padding:9px 14px;font-size:11.5px;line-height:1.75}
+    .pp-sum .t{font-weight:700;color:#b45309}
+    .pp-sum .tt{font-weight:700;font-size:13px;margin-top:5px;padding-top:5px;border-top:1px dashed #cbd5e1}
+    .pp-note{font-size:9.5px;color:#64748b;line-height:1.5;margin-top:6px}
   </style>
   </head>
   <body>
@@ -101,7 +166,8 @@
         <label>貨幣</label>
         <select id="cur" style="width:110px"></select>
         <button class="btn" id="addPlan">＋ 新增方案</button>
-        <button class="btn dark" id="exp" style="margin-left:auto">⬇ 匯出 Excel</button>
+        <button class="btn dark" id="pdf" style="margin-left:auto">⬇ 匯出 PDF</button>
+        <button class="btn dark" id="exp">⬇ 匯出 Excel</button>
       </div>
     </section>
 
@@ -135,6 +201,7 @@
     </section>
   </main>
   <footer>本工具只供參考，優惠以保險公司最新公佈的條款及細則和最終批核為準。</footer>
+  <div id="pdfWrap"></div>
 
   <script>
   const $ = id => document.getElementById(id);
@@ -370,7 +437,7 @@
       baseAmt, extAmt, otherAmt, couponAmt, oP, pctTxt, upfrontMode: s.mode === 'upfront', hints, warns, period, pre, summary: lines.join('\n') };
   }
 
-  // 每年實繳保費表格的資料（畫面及複製共用）
+  // 每年實繳保費表格的資料（畫面、複製及 PDF 共用）
   function tableRows(c) {
     const body = c.disp.map(r => {
       const multi = r.items.length > 1;
@@ -383,7 +450,7 @@
     return body;
   }
 
-  // 優惠明細的資料（畫面及複製共用）：[名稱, 幅度, 金額, 是否總計]
+  // 優惠明細的資料（畫面、複製及 PDF 共用）：[名稱, 幅度, 金額, 是否總計]
   function bdRows(p, c) {
     const oName = (p.oName && p.oName !== '其他優惠') ? '其他優惠｜' + p.oName : '其他優惠';
     const a = [
@@ -872,6 +939,142 @@
     b.textContent = old;
   });
 
+  // ---------- 匯出 PDF ----------
+  // 做法：把每一頁排成 A4 尺寸的 HTML（畫面外），用 html2canvas 轉成高清圖片，再用 jsPDF 合成 PDF。
+  // 每個方案為直向頁；方案對比（兩個方案或以上）為橫向頁，放在最前。
+  const pSec = t => '<div class="pp-sec">' + esc(t) + '</div>';
+
+  // 單一方案的內容塊：重點卡片 → 保單資料 → 優惠明細 → 每年實繳保費 → 優惠摘要
+  function pPlanBlocks(p, c) {
+    const B = [];
+    const cards = [['總優惠金額', cur + f0(c.totDed), 1], ['總優惠百分比', c.pctTxt, 1], [c.lifelong ? '首5年實繳總額' : '實繳總額', cur + f2(c.totNet)]];
+    if (c.pre) cards.push(['投保時一次性支付（保費）', cur + f0(c.pre.upfront)]);
+    B.push('<div class="pp-cards">' + cards.map(q => '<div class="' + (q[2] ? 'hi' : '') + '"><small>' + q[0] + '</small><b>' + esc(q[1]) + '</b></div>').join('') + '</div>');
+
+    // 保單資料：兩欄排列；第三個值為 1 代表橫跨兩欄
+    const info = [['產品', c.prod.name, 1], ['保費繳付期', c.t.term], ['保單貨幣', (CUR_NAME[cur] || cur) + '（' + cur + '）'],
+      ['保費金額', cur + f2(c.P)], ['每年保費徵費', cur + f2(c.levy)], ['繳費安排', xPay(c)]];
+    if (c.pre) info.push(['預繳保證年利率', c.pre.rate + '%']);
+    const per = c.warns.concat(c.period ? [c.period] : []).join('；');
+    if (per) info.push(['推廣期', per, 1]);
+    let col = 0;
+    const cells = info.map((q, k) => {
+      let w = q[2];
+      if (!w && col === 0 && (k === info.length - 1 || info[k + 1][2])) w = 1;
+      if (w) col = 0; else col ^= 1;
+      return '<div class="' + (w ? 'w' : '') + '"><small>' + q[0] + '</small><b>' + esc(q[1]) + '</b></div>';
+    }).join('');
+    B.push(pSec('保單資料') + '<div class="pp-info">' + cells + '</div>');
+
+    B.push(pSec('優惠明細') + '<table class="pp-t"><thead><tr><th style="width:44%">優惠項目</th><th>優惠幅度</th><th style="width:24%">優惠金額</th></tr></thead><tbody>' +
+      bdRows(p, c).map((x, k) => '<tr class="' + (x[3] ? 'tot' : k % 2 ? 'z' : '') + '"><td class="l">' + esc(x[0]) + '</td><td><span class="pp-tag">' + esc(x[1]) +
+        '</span></td><td class="r b' + (x[3] ? ' g' : '') + '">' + esc(cur) + f0(x[2]) + '</td></tr>').join('') + '</tbody></table>');
+
+    const body = tableRows(c);
+    B.push(pSec('每年實繳保費（' + cur + '）') + '<table class="pp-t"><thead><tr><th style="width:17%">保單年度</th><th style="width:17%">原保費<br>（包括保費徵費）</th><th>優惠／回贈詳情</th><th style="width:14%">扣減金額<br>（整數）</th><th style="width:16%">實繳保費</th></tr></thead><tbody>' +
+      body.map((r, k) => '<tr class="' + (k === body.length - 1 ? 'tot' : k % 2 ? 'z' : '') + '"><td class="b">' + esc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2].map(esc).join('<br>') +
+        '</td><td class="d">' + r[3].map(esc).join('<br>') + '</td><td class="p">' + r[4] + '</td></tr>').join('') + '</tbody></table>' +
+      (c.pre ? '<div class="pp-note">註：預繳優惠利息實際是存入保單的現金儲備金戶口，上表為方便比較，按年列作扣減。各年利息向下取整顯示，總計按未取整利息計算，故與各年相加可能相差 1 至 2 元。</div>' : ''));
+
+    if (c.summary) B.push(pSec('優惠摘要') + '<div class="pp-sum">' + c.summary.split('\n').map(l =>
+      l.indexOf('✅') === 0 ? '<div class="tt">' + esc(l.replace(/^✅\s*/, '')) + '</div>' : '<div class="' + (l.indexOf('【') === 0 ? 't' : '') + '">' + esc(l) + '</div>').join('') + '</div>');
+    return B;
+  }
+
+  // 方案對比的內容塊：項目為列、方案為欄；每張表最多 4 個方案
+  function pCmpBlocks() {
+    const cs = plans.map(calc), B = [], N = 4;
+    const m0 = v => esc(cur) + f0(v), m2 = v => esc(cur) + f2(v), sm = t => ' <small>（' + esc(t) + '）</small>';
+    const L = [
+      ['產品', c => esc(c.prod.name)],
+      ['保費繳付期', c => esc(c.t.term)],
+      ['繳費安排', c => esc(xPay(c))],
+      ['保費金額', c => m0(c.P)],
+      ['基本回贈／保費折扣', c => m0(c.baseAmt) + sm(c.base + c.unit)],
+      ['配搭指定產品額外優惠', c => m0(c.extAmt) + sm(c.ext + c.unit)],
+      ['其他優惠', c => m0(c.otherAmt)],
+      ['電子保費現金券', c => m0(c.couponAmt)],
+      ['預繳優惠利息', c => c.pre ? m0(c.pre.tot) + sm('年利率 ' + c.pre.rate + '%') : m0(0)],
+      ['總優惠金額', c => m0(c.totDed), 'tot'],
+      ['總優惠百分比', c => c.pctTxt, 'tot'],
+      ['總原保費（包括保費徵費）', c => m2(c.totOrig)],
+      ['實繳總額', c => m2(c.totNet), 'pay'],
+      ['投保時一次性支付（保費）', c => c.pre ? m0(c.pre.upfront) : '—']
+    ];
+    for (let a = 0; a < plans.length; a += N) {
+      const idx = plans.slice(a, a + N).map((_, k) => a + k);
+      const ttl = '方案對比' + (plans.length > N ? '（第 ' + (a + 1) + (idx.length > 1 ? '–' + (a + idx.length) : '') + ' 個方案）' : '');
+      B.push(pSec(ttl) + '<table class="pp-t"><thead><tr><th style="width:230px">項目</th>' + idx.map(i => '<th>' + esc(plans[i].name || '方案' + (i + 1)) + '</th>').join('') + '</tr></thead><tbody>' +
+        L.map((q, k) => '<tr class="' + (q[2] === 'tot' ? 'tot' : k % 2 ? 'z' : '') + '"><td class="h">' + q[0] + '</td>' +
+          idx.map(i => '<td class="' + (q[2] === 'tot' ? 'g' : q[2] === 'pay' ? 'p' : '') + '">' + q[1](cs[i]) + '</td>').join('') + '</tr>').join('') + '</tbody></table>' +
+        (cs.some(c => c.lifelong) ? '<div class="pp-note">＊ 終身或每年續保的計劃，總原保費及實繳總額按首5年計算。</div>' : ''));
+    }
+    return B;
+  }
+
+  // 自動分頁：逐塊量度實際高度，放不下就換頁（每塊內容不會被切開）
+  function pFlow(blocks, ls) {
+    const m = document.createElement('div');
+    m.className = 'pm' + (ls ? ' ls' : '');
+    $('pdfWrap').appendChild(m);
+    const CAP = ls ? 615 : 945, pages = [];
+    let acc = [], used = 0;
+    blocks.forEach(b => {
+      const html = '<div class="pb">' + b + '</div>';
+      m.innerHTML = html;
+      const h = m.firstChild.offsetHeight;
+      if (acc.length && used + h > CAP) { pages.push(acc.join('')); acc = []; used = 0; }
+      acc.push(html); used += h;
+    });
+    if (acc.length) pages.push(acc.join(''));
+    m.remove();
+    return pages;
+  }
+
+  const pPage = (p, n, N) => '<div class="pp' + (p.ls ? ' ls' : '') + '"><div class="pp-head"><div class="pp-hl"><div class="pp-eye">保費優惠方案 · PREMIUM OFFER</div><div class="pp-title">' + esc(p.title) + '</div>' +
+    (p.sub ? '<div class="pp-subt">' + esc(p.sub) + '</div>' : '') + '</div><div class="pp-date"><small>製表日期</small><b>' + xToday() + '</b><small>貨幣：' + esc((CUR_NAME[cur] || cur) + '（' + cur + '）') + '</small></div></div>' +
+    '<div class="pp-gold"></div><div class="pp-body">' + p.body + '</div><div class="pp-foot"><span>＊' + DISCLAIMER + '<br>優惠規則：' + esc(verTxt()) + '</span><span>第 ' + n + ' / ' + N + ' 頁</span></div></div>';
+
+  // 手機（觸控裝置）開啟分享選單；電腦直接下載
+  async function deliver(blob, name, type) {
+    try {
+      const f = new File([blob], name, { type });
+      if (window.matchMedia && matchMedia('(pointer:coarse)').matches && navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  }
+
+  $('pdf').addEventListener('click', async () => {
+    if (!window.html2canvas || !window.jspdf) { alert('PDF 元件未能載入，請檢查網絡後重新整理頁面再試。'); return; }
+    if (!plans.length) { alert('請先新增方案。'); return; }
+    if (!plans.some(p => num(p.prem) > 0)) { alert('請先輸入保費金額。'); return; }
+    const b = $('pdf'), old = b.textContent, wrap = $('pdfWrap');
+    b.disabled = true; b.textContent = '準備中…';
+    try {
+      const P = [];
+      if (plans.length > 1) pFlow(pCmpBlocks(), true).forEach(body => P.push({ ls: true, title: '保費優惠方案對比', sub: '共 ' + plans.length + ' 個方案', body }));
+      plans.forEach((p, i) => {
+        const c = calc(p);
+        pFlow(pPlanBlocks(p, c), false).forEach(body => P.push({ title: p.name || '方案' + (i + 1), sub: c.prod.name + '（' + c.t.term + '）', body }));
+      });
+      let pdf = null;
+      for (let k = 0; k < P.length; k++) {
+        b.textContent = '生成中 ' + (k + 1) + '/' + P.length + '…';
+        wrap.innerHTML = pPage(P[k], k + 1, P.length);
+        const cv = await html2canvas(wrap.firstChild, { scale: 2, backgroundColor: '#ffffff', windowWidth: 1200 });
+        const o = P[k].ls ? 'landscape' : 'portrait';
+        if (!pdf) pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: o }); else pdf.addPage('a4', o);
+        pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, P[k].ls ? 297 : 210, P[k].ls ? 210 : 297);
+      }
+      const fn = (plans.length === 1 ? '保費優惠方案_' + (plans[0].name || '方案1') : '保費優惠方案（' + plans.length + ' 個方案）').replace(/[\\/:*?"<>|]/g, '_');
+      await deliver(pdf.output('blob'), fn + '.pdf', 'application/pdf');
+    } catch (e) { alert('匯出失敗：' + e.message); }
+    wrap.innerHTML = ''; b.disabled = false; b.textContent = old;
+  });
+
   // ---------- 啟動 ----------
   // 自動讀取同一資料夾的 rebate.json（保費回贈）及 prepay.json（預繳優惠）；每期只需更換這兩個檔案
   async function loadFiles() {
@@ -905,4 +1108,4 @@
   loadFiles();
   </script>
   </body>
-  </html>  </html>
+  </html>
